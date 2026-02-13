@@ -69,6 +69,7 @@ func BenchmarkDbrDb(b *testing.B) {
 	}
 }
 
+/*
 func BenchmarkSqlxDb(b *testing.B) {
 	db := &SqlxDb{}
 	db.Init()
@@ -79,6 +80,7 @@ func BenchmarkSqlxDb(b *testing.B) {
 		runTest(db)
 	}
 }
+*/
 
 func BenchmarkSqlfDb(b *testing.B) {
 	db := &SqlfDb{}

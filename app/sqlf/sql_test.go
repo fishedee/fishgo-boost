@@ -18,8 +18,8 @@ func initSqliteDatabase() SqlfDB {
 		panic(err)
 	}
 	db, err := NewSqlfDB(log, nil, SqlfDBConfig{
-		Driver:     "sqlite3",
-		SourceName: ":memory:?_loc=auto",
+		Driver:     "sqlite",
+		SourceName: ":memory:?_inttotime=1",
 		Debug:      true,
 	})
 	if err != nil {
@@ -64,7 +64,7 @@ func initMySqlDatabase() SqlfDB {
 	}
 	db, err := NewSqlfDB(log, nil, SqlfDBConfig{
 		Driver:     "mysql",
-		SourceName: "root:Yinghao23367847@tcp(localhost:3306)/test?parseTime=true&loc=Local",
+		SourceName: "root:123@tcp(localhost:3306)/test?parseTime=true&loc=Local",
 		Debug:      true,
 	})
 	if err != nil {

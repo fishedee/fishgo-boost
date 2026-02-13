@@ -6,8 +6,6 @@ import (
 	"runtime"
 	"strconv"
 	"testing"
-
-	. "github.com/fishedee/fishgo-boost/language"
 )
 
 // 左右参数比较工具
@@ -28,7 +26,7 @@ func AssertException(t *testing.T, code int, message string, handler func(), tes
 	t.Helper()
 	failDesc := ""
 	func() {
-		defer CatchCrash(func(e Exception) {
+		defer InternalCatchCrash(func(e InternalException) {
 			if e.GetCode() != code {
 				failDesc = fmt.Sprintf("assert exception code fail: %v != %v", code, e.GetCode())
 			}

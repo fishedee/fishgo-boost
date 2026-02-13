@@ -13,7 +13,6 @@ import (
 	. "github.com/fishedee/fishgo-boost/app/validator"
 	. "github.com/fishedee/fishgo-boost/assert"
 	. "github.com/fishedee/fishgo-boost/encoding"
-	. "github.com/fishedee/fishgo-boost/language"
 )
 
 func a_json(v Validator, s Session) interface{} {
@@ -21,7 +20,7 @@ func a_json(v Validator, s Session) interface{} {
 }
 
 func b_Json(v Validator, s Session) interface{} {
-	Throw(10001, "my god")
+	InternalThrow(10001, "my god")
 	return nil
 }
 
@@ -34,7 +33,7 @@ func d_Json(v Validator, s Session) interface{} {
 }
 
 func e_Json(v Validator, s Session) interface{} {
-	return NewException(10002, "my god%v", 3)
+	return NewInternalException(10002, "my god%v", 3)
 }
 
 type dStruct struct {

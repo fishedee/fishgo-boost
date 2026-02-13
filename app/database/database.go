@@ -11,7 +11,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/go-xorm/core"
 	"github.com/go-xorm/xorm"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 type DatabaseCommon interface {
@@ -120,7 +119,7 @@ type databaseSessionImplement struct {
 
 func NewDatabaseTest() Database {
 	db, err := NewDatabase(DatabaseConfig{
-		Driver:   "sqlite3",
+		Driver:   "sqlite_cst",
 		Database: ":memory:",
 	})
 	if err != nil {
@@ -148,12 +147,13 @@ func NewDatabase(config DatabaseConfig) (Database, error) {
 			config.Charset,
 			config.Collation,
 		)
-	} else if config.Driver == "sqlite3" {
+	} else if config.Driver == "sqlite_cst" {
 		dblink = config.Database
 	} else {
 		return nil, errors.New("invalid database driver " + config.Driver)
 	}
 	tempDb, err := xorm.NewEngine(config.Driver, dblink)
+
 	if err != nil {
 		return nil, err
 	}

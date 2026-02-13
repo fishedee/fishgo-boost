@@ -25,7 +25,7 @@ func TestRand(t *testing.T) {
 			if singleResult >= 'A' && singleResult <= 'Z' {
 				continue
 			}
-			t.Errorf("invalid crypto rand", singleTestCase)
+			t.Errorf("invalid crypto rand %v", singleTestCase)
 		}
 	}
 
@@ -38,7 +38,7 @@ func TestRand(t *testing.T) {
 			if singleResult >= '0' && singleResult <= '9' {
 				continue
 			}
-			t.Errorf("invalid crypto rand digit", singleTestCase)
+			t.Errorf("invalid crypto rand digit %v", singleTestCase)
 		}
 	}
 

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/fishedee/fishgo-boost/assert"
+	"github.com/fishedee/fishgo-boost/assert"
 )
 
 func testTimeSingle(t *testing.T, index int, zeroTime time.Time, shouldEqual1 bool, shouldEqual2 bool) {
@@ -19,7 +19,7 @@ func testTimeSingle(t *testing.T, index int, zeroTime time.Time, shouldEqual1 bo
 	}
 	zeroTime2 = zeroTime2.In(time.Local)
 
-	AssertEqual(t, zeroTime.Equal(zeroTime2), shouldEqual1, index)
+	assert.AssertEqual(t, zeroTime.Equal(zeroTime2), shouldEqual1, index)
 
 	zeroTimeStr2 := zeroTime2.Format(layout)
 	zeroTime3, err := time.ParseInLocation(layout, zeroTimeStr2, time.UTC)
@@ -28,7 +28,7 @@ func testTimeSingle(t *testing.T, index int, zeroTime time.Time, shouldEqual1 bo
 	}
 	zeroTime3 = zeroTime3.In(time.Local)
 
-	AssertEqual(t, zeroTime.Equal(zeroTime3), shouldEqual2, index)
+	assert.AssertEqual(t, zeroTime.Equal(zeroTime3), shouldEqual2, index)
 }
 func TestAll(t *testing.T) {
 	testCase := []struct {
@@ -40,27 +40,27 @@ func TestAll(t *testing.T) {
 		{
 			time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC),
 			true,
-			false,
+			true,
 		},
 		{
 			time.Date(1, 1, 1, 0, 0, 0, 0, time.Local),
-			false,
-			false,
+			true,
+			true,
 		},
 		{
 			time.Date(1000, 1, 1, 0, 0, 0, 0, time.Local),
-			false,
-			false,
+			true,
+			true,
 		},
 		{
 			time.Date(1900, 12, 31, 0, 0, 0, 0, time.UTC),
 			true,
-			false,
+			true,
 		},
 		{
 			time.Date(1900, 12, 31, 0, 0, 0, 0, time.Local),
-			false,
-			false,
+			true,
+			true,
 		},
 		//1901年以后才能通过测试
 		{

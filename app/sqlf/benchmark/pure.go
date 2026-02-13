@@ -3,14 +3,15 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"time"
+
 	. "github.com/fishedee/fishgo-boost/language"
 	_ "github.com/go-sql-driver/mysql"
-	"time"
 )
 
 const (
 	USERNAME = "root"
-	PASSWORD = "1"
+	PASSWORD = "123"
 	NETWORK  = "tcp"
 	SERVER   = "localhost"
 	PORT     = 3306

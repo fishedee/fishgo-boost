@@ -2,17 +2,15 @@ package assert
 
 import (
 	"testing"
-
-	. "github.com/fishedee/fishgo-boost/language"
 )
 
 func TestAssertException(t *testing.T) {
 	//below test case should fail!
 	AssertException(t, 1, "", func() {
-		Throw(2, "")
+		InternalThrow(2, "")
 	})
 	AssertException(t, 1, "123", func() {
-		Throw(1, "456")
+		InternalThrow(1, "456")
 	})
 	AssertException(t, 1, "", func() {
 	})

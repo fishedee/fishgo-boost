@@ -527,32 +527,21 @@ func benchmarkGinBasic(b *testing.B, insertData []string, findData []string) {
 	}
 }
 
-*/
-
-func BenchmarkRouterShort(b *testing.B) {
-	testUrl := "/abc"
-	benchmarkRouterBasic(b, []string{testUrl}, []string{testUrl})
-}
 
 func BenchmarkGinShort(b *testing.B) {
 	testUrl := "/abc"
 	benchmarkGinBasic(b, []string{testUrl}, []string{testUrl})
 }
 
-func BenchmarkRouterLong(b *testing.B) {
-	testUrl := "/abc/12312313/adf/asdf/asdf/asdf/sdaf/asdf/abc/12312313/adf/asdf/asdf/asdf/sdaf/asdf/"
-	benchmarkRouterBasic(b, []string{testUrl}, []string{testUrl})
+func BenchmarkGinParamLong(b *testing.B) {
+	insertUrl := "/user/:userId"
+	findUrl := "/user/123/adsfasdfadsfasdfasdfadsf/zcvczxcxzvzvcx"
+	benchmarkGinBasic(b, []string{insertUrl}, []string{findUrl})
 }
 
 func BenchmarkGinLong(b *testing.B) {
 	testUrl := "/abc/12312313/adf/asdf/asdf/asdf/sdaf/asdf/abc/12312313/adf/asdf/asdf/asdf/sdaf/asdf/"
 	benchmarkGinBasic(b, []string{testUrl}, []string{testUrl})
-}
-
-func BenchmarkRouterParam(b *testing.B) {
-	insertUrl := "/user/:userId"
-	findUrl := "/user/123"
-	benchmarkRouterBasic(b, []string{insertUrl}, []string{findUrl})
 }
 
 func BenchmarkGinParam(b *testing.B) {
@@ -561,14 +550,26 @@ func BenchmarkGinParam(b *testing.B) {
 	benchmarkGinBasic(b, []string{insertUrl}, []string{findUrl})
 }
 
+*/
+
+func BenchmarkRouterShort(b *testing.B) {
+	testUrl := "/abc"
+	benchmarkRouterBasic(b, []string{testUrl}, []string{testUrl})
+}
+
+func BenchmarkRouterLong(b *testing.B) {
+	testUrl := "/abc/12312313/adf/asdf/asdf/asdf/sdaf/asdf/abc/12312313/adf/asdf/asdf/asdf/sdaf/asdf/"
+	benchmarkRouterBasic(b, []string{testUrl}, []string{testUrl})
+}
+
+func BenchmarkRouterParam(b *testing.B) {
+	insertUrl := "/user/:userId"
+	findUrl := "/user/123"
+	benchmarkRouterBasic(b, []string{insertUrl}, []string{findUrl})
+}
+
 func BenchmarkRouterParamLong(b *testing.B) {
 	insertUrl := "/user/:userId"
 	findUrl := "/user/123/adsfasdfadsfasdfasdfadsf/zcvczxcxzvzvcx"
 	benchmarkRouterBasic(b, []string{insertUrl}, []string{findUrl})
-}
-
-func BenchmarkGinParamLong(b *testing.B) {
-	insertUrl := "/user/:userId"
-	findUrl := "/user/123/adsfasdfadsfasdfasdfadsf/zcvczxcxzvzvcx"
-	benchmarkGinBasic(b, []string{insertUrl}, []string{findUrl})
 }

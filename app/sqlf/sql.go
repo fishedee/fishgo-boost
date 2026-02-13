@@ -2,11 +2,12 @@ package sqlf
 
 import (
 	gosql "database/sql"
+	"time"
+
 	. "github.com/fishedee/fishgo-boost/app/log"
 	. "github.com/fishedee/fishgo-boost/app/metric"
 	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/mattn/go-sqlite3"
-	"time"
+	_ "modernc.org/sqlite"
 )
 
 type SqlfResult interface {
@@ -64,8 +65,8 @@ func NewSqlfDbTest() SqlfDB {
 	}
 	//sqlite3指定_loc以后，读取的字符串默认转换为UTC时区，然后转换为_loc指定的时区，auto代表Local时区
 	db, err := NewSqlfDB(log, nil, SqlfDBConfig{
-		Driver:     "sqlite3",
-		SourceName: ":memory:?_loc=auto",
+		Driver:     "sqlite",
+		SourceName: ":memory:?_inttotime=1",
 		Debug:      true,
 	})
 	if err != nil {

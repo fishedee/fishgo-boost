@@ -104,12 +104,14 @@ func TestDatabase(t *testing.T) {
 	var err error
 
 	database, err := NewDatabase(DatabaseConfig{
-		Driver:   "mysql",
-		User:     "root",
-		Passowrd: "1",
-		Host:     "127.0.0.1",
-		Port:     3306,
-		Database: "test",
+		Driver:    "mysql",
+		User:      "root",
+		Passowrd:  "123",
+		Host:      "127.0.0.1",
+		Port:      3306,
+		Database:  "test",
+		Charset:   "utf8mb4",
+		Collation: "utf8mb4_unicode_ci",
 	})
 	if err != nil {
 		panic(err)
@@ -118,7 +120,7 @@ func TestDatabase(t *testing.T) {
 
 	defer os.Remove("./test.db")
 	database2, err := NewDatabase(DatabaseConfig{
-		Driver:   "sqlite3",
+		Driver:   "sqlite_cst",
 		Database: "./test.db",
 	})
 	if err != nil {
