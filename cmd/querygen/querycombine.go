@@ -1,8 +1,9 @@
 package main
 
 import (
-	. "github.com/fishedee/fishgo-boost/language"
 	"html/template"
+
+	. "github.com/fishedee/fishgo-boost/language"
 )
 
 func QueryCombineGen(request queryGenRequest) *queryGenResponse {

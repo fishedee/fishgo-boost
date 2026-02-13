@@ -13,7 +13,7 @@ import (
 	. "github.com/fishedee/fishgo-boost/app/router"
 	. "github.com/fishedee/fishgo-boost/app/session"
 	. "github.com/fishedee/fishgo-boost/app/validator"
-	"github.com/fishedee/fishgo-boost/cmd/tool/util"
+	"github.com/fishedee/fishgo-boost/cmd/app_test/util"
 	. "github.com/fishedee/fishgo-boost/language"
 )
 

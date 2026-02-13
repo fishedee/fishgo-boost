@@ -7,8 +7,8 @@ import (
 	"time"
 
 	. "github.com/fishedee/fishgo-boost/assert"
+	. "github.com/fishedee/fishgo-boost/cmd/querygen/testdata"
 	. "github.com/fishedee/fishgo-boost/language"
-	. "github.com/fishedee/fishgo-boost/language/querygen/testdata"
 )
 
 func TestQuerySort(t *testing.T) {

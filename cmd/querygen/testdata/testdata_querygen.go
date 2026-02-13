@@ -1,9 +1,10 @@
 package testdata
 
 import (
-	"github.com/fishedee/fishgo-boost/language"
-	"github.com/fishedee/fishgo-boost/language/querygen/testdata/subtest"
 	"time"
+
+	"github.com/fishedee/fishgo-boost/cmd/querygen/testdata/subtest"
+	"github.com/fishedee/fishgo-boost/language"
 )
 
 func queryColumnMap_4cb77d7ba8d1eeb02c714a053eefbaa439c736f0(data interface{}, column string) interface{} {

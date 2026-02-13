@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	. "github.com/fishedee/fishgo-boost/assert"
+	. "github.com/fishedee/fishgo-boost/cmd/querygen/testdata"
 	. "github.com/fishedee/fishgo-boost/language"
-	. "github.com/fishedee/fishgo-boost/language/querygen/testdata"
 )
 
 func TestQueryColumnMap(t *testing.T) {

@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
-	. "github.com/fishedee/fishgo-boost/language"
 	"go/constant"
 	"go/types"
 	"html/template"
 	"strings"
+
+	. "github.com/fishedee/fishgo-boost/language"
 )
 
 func getFunctionSignature(line string, arguments []types.TypeAndValue, isConstant []bool) string {

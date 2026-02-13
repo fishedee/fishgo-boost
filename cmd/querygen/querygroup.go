@@ -1,10 +1,11 @@
 package main
 
 import (
-	. "github.com/fishedee/fishgo-boost/language"
 	"go/types"
 	"html/template"
 	"strings"
+
+	. "github.com/fishedee/fishgo-boost/language"
 )
 
 func QueryGroupGen(request queryGenRequest) *queryGenResponse {

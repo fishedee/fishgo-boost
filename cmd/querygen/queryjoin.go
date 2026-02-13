@@ -1,11 +1,12 @@
 package main
 
 import (
-	. "github.com/fishedee/fishgo-boost/language"
 	"go/constant"
 	"go/types"
 	"html/template"
 	"strings"
+
+	. "github.com/fishedee/fishgo-boost/language"
 )
 
 func analyseJoin(line string, joinType string) (string, string) {
