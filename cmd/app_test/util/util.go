@@ -5,7 +5,6 @@ import (
 	"github.com/fishedee/fishgo-boost/app/ioc"
 	"github.com/fishedee/fishgo-boost/app/log"
 	"github.com/fishedee/fishgo-boost/app/metric"
-	"github.com/fishedee/fishgo-boost/app/proxy"
 	"github.com/fishedee/fishgo-boost/app/render"
 	"github.com/fishedee/fishgo-boost/app/session"
 	"github.com/fishedee/fishgo-boost/app/sqlf"
@@ -27,10 +26,6 @@ type Trigger = trigger.Trigger
 
 func MustRegisterIoc(obj interface{}) {
 	ioc.MustRegisterIoc(obj)
-}
-
-func MustRegisterIocWithProxy(obj interface{}) {
-	ioc.MustRegisterIoc(proxy.WrapCreatorWithProxy(obj))
 }
 
 func NewConfig() Config {
