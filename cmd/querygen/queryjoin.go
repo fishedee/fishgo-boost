@@ -1,8 +1,6 @@
 package main
 
 import (
-	"go/constant"
-	"go/types"
 	"html/template"
 	"strings"
 
@@ -19,9 +17,9 @@ func analyseJoin(line string, joinType string) (string, string) {
 	return leftJoinType, rightJoinType
 }
 
-func QueryJoinGen(request queryGenRequest) *queryGenResponse {
-	args := request.args
-	line := request.pkg.FileSet().Position(request.expr.Pos()).String()
+func QueryJoinGen(request *CallInfo) *GeneratePackage {
+	args := request.Params
+	line := request.Position.String()
 
 	//解析第一个参数
 	firstArgSlice := getSliceType(line, args[0].Type)
@@ -32,7 +30,7 @@ func QueryJoinGen(request queryGenRequest) *queryGenResponse {
 	secondArgElem := secondArgSlice.Elem()
 
 	//解析第三个参数
-	thirdArgJoinPlace := getContantStringValue(line, args[2].Value)
+	thirdArgJoinPlace := getContantStringValue(line, args[2])
 	joinPlace := strings.Trim(strings.ToLower(thirdArgJoinPlace), " ")
 	if joinPlace != "left" && joinPlace != "right" &&
 		joinPlace != "inner" && joinPlace != "outer" {
@@ -40,7 +38,7 @@ func QueryJoinGen(request queryGenRequest) *queryGenResponse {
 	}
 
 	//解析第四个参数
-	forthArgJoinType := getContantStringValue(line, args[3].Value)
+	forthArgJoinType := getContantStringValue(line, args[3])
 	leftJoinColumn, rightJoinColumn := analyseJoin(line, forthArgJoinType)
 	leftFieldExtract, leftFieldType := getExtendFieldType(line, firstArgElem, leftJoinColumn)
 	rightFieldExtract, rightFieldType := getExtendFieldType(line, secondArgElem, rightJoinColumn)
@@ -93,7 +91,7 @@ func QueryJoinGen(request queryGenRequest) *queryGenResponse {
 		"signature":      signature,
 		"argumentDefine": argumentDefine,
 	})
-	return &queryGenResponse{
+	return &GeneratePackage{
 		importPackage: importPackage,
 		funcName:      "queryJoin_" + signature,
 		funcBody:      funcBody,
@@ -183,53 +181,45 @@ func init() {
 		panic(err)
 	}
 	registerQueryGen("github.com/fishedee/fishgo-boost/language.QueryJoin", QueryJoinGen)
-	registerQueryGen("github.com/fishedee/fishgo-boost/language.QueryLeftJoin", func(request queryGenRequest) *queryGenResponse {
-		thridParty := types.TypeAndValue{
-			Type:  nil,
-			Value: constant.MakeString("left"),
-		}
-		newArgs := []types.TypeAndValue{}
-		newArgs = append(newArgs, request.args[0:2]...)
-		newArgs = append(newArgs, thridParty)
-		newArgs = append(newArgs, request.args[2:]...)
-		request.args = newArgs
-		return QueryJoinGen(request)
+	registerQueryGen("github.com/fishedee/fishgo-boost/language.QueryLeftJoin", func(request *CallInfo) *GeneratePackage {
+		thridParty := NewConstantStringParamInfo("left")
+		newParams := []ParamInfo{}
+		newParams = append(newParams, request.Params[0:2]...)
+		newParams = append(newParams, thridParty)
+		newParams = append(newParams, request.Params[2:]...)
+		newRequest := request
+		newRequest.Params = newParams
+		return QueryJoinGen(newRequest)
 	})
-	registerQueryGen("github.com/fishedee/fishgo-boost/language.QueryRightJoin", func(request queryGenRequest) *queryGenResponse {
-		thridParty := types.TypeAndValue{
-			Type:  nil,
-			Value: constant.MakeString("right"),
-		}
-		newArgs := []types.TypeAndValue{}
-		newArgs = append(newArgs, request.args[0:2]...)
-		newArgs = append(newArgs, thridParty)
-		newArgs = append(newArgs, request.args[2:]...)
-		request.args = newArgs
-		return QueryJoinGen(request)
+	registerQueryGen("github.com/fishedee/fishgo-boost/language.QueryRightJoin", func(request *CallInfo) *GeneratePackage {
+		thridParty := NewConstantStringParamInfo("right")
+		newParams := []ParamInfo{}
+		newParams = append(newParams, request.Params[0:2]...)
+		newParams = append(newParams, thridParty)
+		newParams = append(newParams, request.Params[2:]...)
+		newRequest := request
+		newRequest.Params = newParams
+		return QueryJoinGen(newRequest)
 	})
-	registerQueryGen("github.com/fishedee/fishgo-boost/language.QueryInnerJoin", func(request queryGenRequest) *queryGenResponse {
-		thridParty := types.TypeAndValue{
-			Type:  nil,
-			Value: constant.MakeString("inner"),
-		}
-		newArgs := []types.TypeAndValue{}
-		newArgs = append(newArgs, request.args[0:2]...)
-		newArgs = append(newArgs, thridParty)
-		newArgs = append(newArgs, request.args[2:]...)
-		request.args = newArgs
-		return QueryJoinGen(request)
+	registerQueryGen("github.com/fishedee/fishgo-boost/language.QueryInnerJoin", func(request *CallInfo) *GeneratePackage {
+		thridParty := NewConstantStringParamInfo("inner")
+		newParams := []ParamInfo{}
+		newParams = append(newParams, request.Params[0:2]...)
+		newParams = append(newParams, thridParty)
+		newParams = append(newParams, request.Params[2:]...)
+		newRequest := request
+		newRequest.Params = newParams
+		return QueryJoinGen(newRequest)
 	})
-	registerQueryGen("github.com/fishedee/fishgo-boost/language.QueryOuterJoin", func(request queryGenRequest) *queryGenResponse {
-		thridParty := types.TypeAndValue{
-			Type:  nil,
-			Value: constant.MakeString("outer"),
-		}
-		newArgs := []types.TypeAndValue{}
-		newArgs = append(newArgs, request.args[0:2]...)
-		newArgs = append(newArgs, thridParty)
-		newArgs = append(newArgs, request.args[2:]...)
-		request.args = newArgs
-		return QueryJoinGen(request)
+	registerQueryGen("github.com/fishedee/fishgo-boost/language.QueryOuterJoin", func(request *CallInfo) *GeneratePackage {
+		thridParty := NewConstantStringParamInfo("outer")
+		newParams := []ParamInfo{}
+		newParams = append(newParams, request.Params[0:2]...)
+		newParams = append(newParams, thridParty)
+		newParams = append(newParams, request.Params[2:]...)
+		newRequest := request
+		newRequest.Params = newParams
+		return QueryJoinGen(newRequest)
 	})
 	hasQueryJoinGenerate = map[string]bool{}
 }

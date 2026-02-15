@@ -8,16 +8,16 @@ import (
 	. "github.com/fishedee/fishgo-boost/language"
 )
 
-func QueryGroupGen(request queryGenRequest) *queryGenResponse {
-	args := request.args
-	line := request.pkg.FileSet().Position(request.expr.Pos()).String()
+func QueryGroupGen(request *CallInfo) *GeneratePackage {
+	args := request.Params
+	line := request.Position.String()
 
 	//解析第一个参数
 	firstArgSlice := getSliceType(line, args[0].Type)
 	firstArgSliceElem := firstArgSlice.Elem()
 
 	//解析第二个参数
-	secondArgGroupType := getContantStringValue(line, args[1].Value)
+	secondArgGroupType := getContantStringValue(line, args[1])
 	groupType := strings.Trim(secondArgGroupType, " ")
 	groupFieldExtract, groupFieldType := getExtendFieldType(line, firstArgSliceElem, groupType)
 
@@ -70,7 +70,7 @@ func QueryGroupGen(request queryGenRequest) *queryGenResponse {
 		"signature":      signature,
 		"argumentDefine": argumentDefine,
 	})
-	return &queryGenResponse{
+	return &GeneratePackage{
 		importPackage: importPackage,
 		funcName:      "queryGroup_" + signature,
 		funcBody:      funcBody,

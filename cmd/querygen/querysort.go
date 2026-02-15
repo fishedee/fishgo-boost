@@ -5,16 +5,16 @@ import (
 	"html/template"
 )
 
-func QuerySortGen(request queryGenRequest) *queryGenResponse {
-	args := request.args
-	line := request.pkg.FileSet().Position(request.expr.Pos()).String()
+func QuerySortGen(request *CallInfo) *GeneratePackage {
+	args := request.Params
+	line := request.Position.String()
 
 	//解析第一个参数
 	firstArgSlice := getSliceType(line, args[0].Type)
 	firstArgSliceElem := firstArgSlice.Elem()
 
 	//解析第二个参数
-	secondArgSortType := getContantStringValue(line, args[1].Value)
+	secondArgSortType := getContantStringValue(line, args[1])
 	sortFieldNames, sortFieldIsAscs := analyseSortType(secondArgSortType)
 	sortFieldTypes := make([]types.Type, len(sortFieldNames), len(sortFieldNames))
 	sortFieldExtracts := make([]string, len(sortFieldNames), len(sortFieldNames))
@@ -40,7 +40,7 @@ func QuerySortGen(request queryGenRequest) *queryGenResponse {
 		"signature":      signature,
 		"argumentDefine": argumentDefine,
 	})
-	return &queryGenResponse{
+	return &GeneratePackage{
 		importPackage: importPackage,
 		funcName:      "querySort_" + signature,
 		funcBody:      funcBody,

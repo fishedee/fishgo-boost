@@ -6,9 +6,9 @@ import (
 	. "github.com/fishedee/fishgo-boost/language"
 )
 
-func QueryCombineGen(request queryGenRequest) *queryGenResponse {
-	args := request.args
-	line := request.pkg.FileSet().Position(request.expr.Pos()).String()
+func QueryCombineGen(request *CallInfo) *GeneratePackage {
+	args := request.Params
+	line := request.Position.String()
 
 	//解析第一个参数
 	firstArgSlice := getSliceType(line, args[0].Type)
@@ -57,7 +57,7 @@ func QueryCombineGen(request queryGenRequest) *queryGenResponse {
 		"signature":      signature,
 		"argumentDefine": argumentDefine,
 	})
-	return &queryGenResponse{
+	return &GeneratePackage{
 		importPackage: importPackage,
 		funcName:      "queryCombine_" + signature,
 		funcBody:      funcBody,

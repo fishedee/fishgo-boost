@@ -1,9 +1,13 @@
 .PHONY:gen
 bench:gen
-	go test . -bench=. -benchmem -v 
+	go test -bench=".*" -benchmem -v 
 gen:
-	go install github.com/fishedee/fishgo-boost/language/querygen
+	go build
 	rm -rf testdata/testdata_querygen.go
-	querygen -r github.com/fishedee/fishgo-boost/language/querygen/testdata
+	cd testdata && ../querygen ./...
+	cd ../../language/testdata && ../../cmd/querygen/querygen ./...
 test:gen
 	go test . -v
+test2:gen
+	cd ../../language && go test . -v
+

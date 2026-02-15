@@ -6,9 +6,9 @@ import (
 	. "github.com/fishedee/fishgo-boost/language"
 )
 
-func QueryWhereGen(request queryGenRequest) *queryGenResponse {
-	args := request.args
-	line := request.pkg.FileSet().Position(request.expr.Pos()).String()
+func QueryWhereGen(request *CallInfo) *GeneratePackage {
+	args := request.Params
+	line := request.Position.String()
 
 	//解析第一个参数
 	firstArgSlice := getSliceType(line, args[0].Type)
@@ -51,7 +51,7 @@ func QueryWhereGen(request queryGenRequest) *queryGenResponse {
 		"signature":      signature,
 		"argumentDefine": argumentDefine,
 	})
-	return &queryGenResponse{
+	return &GeneratePackage{
 		importPackage: importPackage,
 		funcName:      "queryWhere_" + signature,
 		funcBody:      funcBody,

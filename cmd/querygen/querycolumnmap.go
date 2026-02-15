@@ -5,12 +5,12 @@ import (
 	"strings"
 )
 
-func QueryColumnMapGen(request queryGenRequest) *queryGenResponse {
-	args := request.args
-	line := request.pkg.FileSet().Position(request.expr.Pos()).String()
+func QueryColumnMapGen(request *CallInfo) *GeneratePackage {
+	args := request.Params
+	line := request.Position.String()
 
 	//解析第二个参数
-	secondArgValue := getContantStringValue(line, args[1].Value)
+	secondArgValue := getContantStringValue(line, args[1])
 	column := strings.Trim(secondArgValue, " ")
 	isColumnMapSlice := false
 	if len(column) >= 2 && column[0:2] == "[]" {
@@ -54,7 +54,7 @@ func QueryColumnMapGen(request queryGenRequest) *queryGenResponse {
 		"signature":      signature,
 		"argumentDefine": argumentDefine,
 	})
-	return &queryGenResponse{
+	return &GeneratePackage{
 		importPackage: importPackage,
 		funcName:      "queryColumnMap_" + signature,
 		funcBody:      funcBody,

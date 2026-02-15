@@ -5,12 +5,13 @@ import (
 	"strings"
 )
 
-func QueryColumnGen(request queryGenRequest) *queryGenResponse {
-	args := request.args
-	line := request.pkg.FileSet().Position(request.expr.Pos()).String()
+func QueryColumnGen(request *CallInfo) *GeneratePackage {
+
+	args := request.Params
+	line := request.Position.String()
 
 	//解析第二个参数
-	secondArgValue := getContantStringValue(line, args[1].Value)
+	secondArgValue := getContantStringValue(line, args[1])
 	column := strings.Trim(secondArgValue, " ")
 
 	//解析第一个参数
@@ -38,7 +39,7 @@ func QueryColumnGen(request queryGenRequest) *queryGenResponse {
 		"signature":      signature,
 		"argumentDefine": argumentDefine,
 	})
-	return &queryGenResponse{
+	return &GeneratePackage{
 		importPackage: importPackage,
 		funcName:      "queryColumn_" + signature,
 		funcBody:      funcBody,

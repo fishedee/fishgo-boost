@@ -6,9 +6,9 @@ import (
 	. "github.com/fishedee/fishgo-boost/language"
 )
 
-func QuerySelectGen(request queryGenRequest) *queryGenResponse {
-	args := request.args
-	line := request.pkg.FileSet().Position(request.expr.Pos()).String()
+func QuerySelectGen(request *CallInfo) *GeneratePackage {
+	args := request.Params
+	line := request.Position.String()
 
 	//解析第一个参数
 	firstArgSlice := getSliceType(line, args[0].Type)
@@ -50,7 +50,7 @@ func QuerySelectGen(request queryGenRequest) *queryGenResponse {
 		"signature":      signature,
 		"argumentDefine": argumentDefine,
 	})
-	return &queryGenResponse{
+	return &GeneratePackage{
 		importPackage: importPackage,
 		funcName:      "querySelect_" + signature,
 		funcBody:      funcBody,

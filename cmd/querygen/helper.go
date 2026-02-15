@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
-	"go/constant"
 	"go/types"
 	"html/template"
 	"strings"
@@ -12,12 +11,12 @@ import (
 	. "github.com/fishedee/fishgo-boost/language"
 )
 
-func getFunctionSignature(line string, arguments []types.TypeAndValue, isConstant []bool) string {
+func getFunctionSignature(line string, arguments []ParamInfo, isConstant []bool) string {
 	var buffer bytes.Buffer
 	for i, argument := range arguments {
 		single := ""
 		if isConstant[i] == true {
-			single = getContantStringValue(line, argument.Value)
+			single = getContantStringValue(line, argument)
 		} else {
 			single = argument.Type.String()
 		}
@@ -30,11 +29,16 @@ func getFunctionSignature(line string, arguments []types.TypeAndValue, isConstan
 	return etagString
 }
 
-func getContantStringValue(line string, value constant.Value) string {
+func getContantStringValue(line string, param ParamInfo) string {
+	value := param.ConstValue
 	if value == nil {
 		Throw(1, "%v:should be constant!%v", line, value)
 	}
-	return constant.StringVal(value)
+	valueString, isOk := value.(string)
+	if !isOk {
+		Throw(1, "%v:should be constant string!%v", line, value)
+	}
+	return valueString
 }
 
 func getNamedType(line string, t types.Type) *types.Named {
@@ -264,11 +268,11 @@ func setImportPackage(line string, t types.Type, importPkg map[string]bool) {
 	}
 }
 
-func getFunctionArgumentCode(line string, arguments []types.TypeAndValue, isConstant []bool) string {
+func getFunctionArgumentCode(line string, arguments []ParamInfo, isConstant []bool) string {
 	argvs := []string{}
 	for i, argument := range arguments {
 		if isConstant[i] == true {
-			argvs = append(argvs, "\""+getContantStringValue(line, argument.Value)+"\"")
+			argvs = append(argvs, "\""+getContantStringValue(line, argument)+"\"")
 		} else {
 			argvs = append(argvs, getTypeDefineCode(line, argument.Type))
 		}
