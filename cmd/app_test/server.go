@@ -13,6 +13,8 @@ import (
 	. "github.com/fishedee/fishgo-boost/app/router"
 	. "github.com/fishedee/fishgo-boost/app/session"
 	. "github.com/fishedee/fishgo-boost/app/validator"
+	_ "github.com/fishedee/fishgo-boost/cmd/app_test/model/fundaccount"
+	_ "github.com/fishedee/fishgo-boost/cmd/app_test/model/unit"
 	"github.com/fishedee/fishgo-boost/cmd/app_test/util"
 	. "github.com/fishedee/fishgo-boost/language"
 )

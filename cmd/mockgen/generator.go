@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"go/build"
 	"go/format"
 	"io/ioutil"
 	"os"
@@ -151,6 +152,15 @@ func getDirDeclType(dir string) (map[string]bool, error) {
 	return data, nil
 }
 
+func getPackagePathToSourceDir(packageName string, sourceDir string) (string, error) {
+	ctx := build.Default
+	pkg, err := ctx.Import(packageName, sourceDir, build.FindOnly)
+	if err != nil {
+		return "", err
+	}
+	return pkg.Dir, nil
+}
+
 func generateSingleFileImport(data []ParserInfo, source string) (string, error) {
 	//解析源代码
 	sourceParserInfo, err := ParserSingleSource(source)
@@ -166,7 +176,11 @@ func generateSingleFileImport(data []ParserInfo, source string) (string, error) 
 				continue
 			}
 			if singleImport.name == "." {
-				dirImportTypes, err := getDirDeclType(os.Getenv("GOPATH") + "/src/" + singleImport.path)
+				packagePath, err := getPackagePathToSourceDir(singleImport.path, singleParserInfo.dir)
+				if err != nil {
+					return "", err
+				}
+				dirImportTypes, err := getDirDeclType(packagePath)
 				if err != nil {
 					return "", err
 				}
@@ -222,6 +236,8 @@ func generateSingleFileImport(data []ParserInfo, source string) (string, error) 
 
 	//拼凑导入符号
 	resultArray := []string{}
+	proxyPath := "github.com/fishedee/fishgo-boost/app/proxy"
+	hasImportProxyPath := false
 	for _, singleImportInfo := range result {
 		if singleImportInfo.path == "" {
 			continue
@@ -230,9 +246,12 @@ func generateSingleFileImport(data []ParserInfo, source string) (string, error) 
 			resultArray,
 			singleImportInfo.name+" \""+singleImportInfo.path+"\"",
 		)
+		if singleImportInfo.path == proxyPath {
+			hasImportProxyPath = true
+		}
 	}
-	if len(resultArray) != 0 {
-		resultArray = append(resultArray, ". \"github.com/fishedee/app/proxy\"")
+	if hasImportProxyPath == false {
+		resultArray = append(resultArray, ". \"github.com/fishedee/fishgo-boost/app/proxy\"")
 	}
 	return "import (" + strings.Join(resultArray, "\n") + ")\n", nil
 }

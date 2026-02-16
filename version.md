@@ -1,3 +1,7 @@
+## v1.3.0
+
+* 重构app/mock生成工具，支持golang v1.13以上的版本
+
 ## v1.2.1
 
 * 重新加入app/mock，app/proxy，app/hook的库，它们在单元测试中会用到
