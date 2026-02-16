@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"go/build"
 	"go/format"
 	"io/ioutil"
 	"os"
@@ -11,6 +10,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"golang.org/x/tools/go/packages"
 )
 
 func generateSingleField(data []FieldInfo) string {
@@ -152,13 +153,39 @@ func getDirDeclType(dir string) (map[string]bool, error) {
 	return data, nil
 }
 
+var packagePathToDir map[string]string
+
 func getPackagePathToSourceDir(packageName string, sourceDir string) (string, error) {
-	ctx := build.Default
-	pkg, err := ctx.Import(packageName, sourceDir, build.FindOnly)
-	if err != nil {
-		return "", err
+	if packagePathToDir == nil {
+		packagePathToDir = map[string]string{}
+		// 配置包加载
+		cfg := &packages.Config{
+			Mode: packages.NeedName |
+				packages.NeedFiles |
+				packages.NeedCompiledGoFiles |
+				packages.NeedImports |
+				packages.NeedDeps |
+				packages.NeedTypes |
+				packages.NeedTypesInfo |
+				packages.NeedSyntax,
+		}
+
+		//加载包
+		pkgs, err := packages.Load(cfg, "./...", "github.com/fishedee/fishgo-boost/...")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "加载包失败: %v\n", err)
+			os.Exit(1)
+		}
+		for _, pkg := range pkgs {
+			packagePathToDir[pkg.PkgPath] = pkg.Dir
+		}
 	}
-	return pkg.Dir, nil
+
+	result, isExist := packagePathToDir[packageName]
+	if isExist == false {
+		panic("can not find path of package : " + packageName)
+	}
+	return result, nil
 }
 
 func generateSingleFileImport(data []ParserInfo, source string) (string, error) {
