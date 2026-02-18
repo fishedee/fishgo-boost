@@ -8,7 +8,7 @@ import (
 	. "github.com/fishedee/fishgo-boost/app/workgroup"
 )
 
-//go:generate ../mockgen/mockgen ^./model/.*/.*(ao|db)\.go$ ^.*(Ao|Db)$
+//go:generate ../mockgen/mockgen ./... ^.*model.*(ao|db)\.go$ ^.*(Ao|Db)$
 func main() {
 	MustInvokeIoc(func(log Log, server *Server) {
 		workgroup, err := NewWorkGroup(log, WorkGroupConfig{

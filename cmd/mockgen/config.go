@@ -1,28 +1,30 @@
 package main
 
 import (
-	"errors"
 	"os"
 )
 
-var Config struct {
-	fileregex string
-	typeregex string
-	isProfile bool
+type Config struct {
+	packageName string
+	fileRegex   string
+	typeRegex   string
+	isProfile   bool
 }
 
-func ReadConfig() error {
+func ReadConfig() Config {
 	argv := os.Args
 	argv = argv[1:]
-	if len(argv) < 2 {
-		return errors.New("need a file regex argument and a type name regex argument")
+	if len(argv) < 3 {
+		panic("mockgen [packageName] [fileRegex] [typeRegex] {-profile}")
 	}
-	Config.fileregex = argv[0]
-	Config.typeregex = argv[1]
-	if len(argv) >= 3 && argv[2] == "-profile" {
-		Config.isProfile = true
+	var config Config
+	config.packageName = argv[0]
+	config.fileRegex = argv[1]
+	config.typeRegex = argv[2]
+	if len(argv) >= 4 && argv[3] == "-profile" {
+		config.isProfile = true
 	} else {
-		Config.isProfile = false
+		config.isProfile = false
 	}
-	return nil
+	return config
 }

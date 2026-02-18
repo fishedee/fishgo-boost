@@ -7,23 +7,31 @@ import (
 	"runtime/pprof"
 )
 
-func mainTask() {
-
-	data, err := ReadDir(".")
+func runProfile(handler func()) {
+	f, err := os.Create("cpu.prof")
 	if err != nil {
-		fmt.Println("read dir error " + err.Error())
-		os.Exit(1)
-		return
+		log.Fatal(err)
 	}
+	defer f.Close()
 
-	data, err = FilterDir(data)
-	if err != nil {
-		fmt.Println("filter dir error " + err.Error())
-		os.Exit(1)
-		return
+	fmt.Println("start cpu prof")
+
+	// 开始 CPU profile
+	if err := pprof.StartCPUProfile(f); err != nil {
+		log.Fatal(err)
 	}
+	defer pprof.StopCPUProfile()
 
-	err = Generator(data)
+	// 要剖析的任务
+	handler()
+}
+
+func mainTask(config Config) {
+	parser := NewParser()
+	analyseResult := parser.Run(config.packageName)
+
+	generator := NewGenerator(config.fileRegex, config.typeRegex)
+	err := generator.Run(analyseResult)
 	if err != nil {
 		fmt.Println("generate dir error " + err.Error())
 		os.Exit(1)
@@ -31,34 +39,13 @@ func mainTask() {
 	}
 }
 
-func runProfile() {
-	if Config.isProfile {
-		f, err := os.Create("cpu.prof")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer f.Close()
-
-		fmt.Println("start cpu prof")
-
-		// 开始 CPU profile
-		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal(err)
-		}
-		defer pprof.StopCPUProfile()
-
-		// 要剖析的任务
-		mainTask()
-	} else {
-		mainTask()
-	}
-}
 func main() {
-	err := ReadConfig()
-	if err != nil {
-		fmt.Println("read config error " + err.Error())
-		os.Exit(1)
-		return
+	config := ReadConfig()
+	if config.isProfile {
+		runProfile(func() {
+			mainTask(config)
+		})
+	} else {
+		mainTask(config)
 	}
-	runProfile()
 }

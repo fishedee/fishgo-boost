@@ -2,6 +2,7 @@ package unit
 
 import (
 	. "github.com/fishedee/fishgo-boost/app/proxy"
+	"time"
 )
 
 type IUnitAo interface {
@@ -9,7 +10,7 @@ type IUnitAo interface {
 	Del(unitId int)
 	Get(unitId int) Unit
 	Mod(unitId int, unit Unit)
-	Search(where Unit) Units
+	Search(where Unit, t time.Time) Units
 }
 
 type UnitAoMock struct {
@@ -17,7 +18,7 @@ type UnitAoMock struct {
 	DelHandler    func(unitId int)
 	GetHandler    func(unitId int) Unit
 	ModHandler    func(unitId int, unit Unit)
-	SearchHandler func(where Unit) Units
+	SearchHandler func(where Unit, t time.Time) Units
 }
 
 func (this *UnitAoMock) Add(unit Unit) {
@@ -36,8 +37,8 @@ func (this *UnitAoMock) Mod(unitId int, unit Unit) {
 	this.ModHandler(unitId, unit)
 }
 
-func (this *UnitAoMock) Search(where Unit) Units {
-	return this.SearchHandler(where)
+func (this *UnitAoMock) Search(where Unit, t time.Time) Units {
+	return this.SearchHandler(where, t)
 }
 
 type IUnitDb interface {

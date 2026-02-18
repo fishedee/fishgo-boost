@@ -4,386 +4,161 @@ import (
 	"errors"
 	"fmt"
 	"go/format"
-	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
-
-	"golang.org/x/tools/go/packages"
 )
 
-func generateSingleField(data []FieldInfo) string {
-	var result []string
-	for _, singleData := range data {
-		result = append(result, singleData.name+" "+singleData.tag)
-	}
-	return strings.Join(result, ",")
+type Generator struct {
+	typeReg *regexp.Regexp
+	fileReg *regexp.Regexp
 }
 
-func generateSingleFieldName(data []FieldInfo) string {
-	var result []string
-	for _, singleData := range data {
-
-		// 支持传递不定参数
-		uncertainParamStr := ""
-		if strings.Contains(singleData.tag, "...") {
-			uncertainParamStr = "..."
-		}
-
-		result = append(result, singleData.name+uncertainParamStr)
-	}
-	return strings.Join(result, ",")
-}
-
-func generateSingleResult(data []FieldInfo) string {
-	var result []string
-	for _, singleData := range data {
-		result = append(result, singleData.tag)
-	}
-	return strings.Join(result, ",")
-}
-
-func getInterfaceName(typeName string) string {
-	return "I" + strings.ToUpper(typeName[0:1]) + typeName[1:]
-}
-
-func getMockName(typeName string) string {
-	return typeName + "Mock"
-}
-
-func generateSingleInterface(typeName string, methods []FunctionInfo) string {
-	funResult := []string{}
-	for _, method := range methods {
-		single := method.name + "" +
-			"(" + generateSingleField(method.params) + ")" +
-			"(" + generateSingleResult(method.results) + ")"
-		funResult = append(funResult, single)
-	}
-	return "type " + getInterfaceName(typeName) + " interface{\n" + strings.Join(funResult, "\n") + "\n}\n"
-}
-
-func generateSingleMock(typeName string, methods []FunctionInfo) string {
-	funResult := []string{}
-	for _, method := range methods {
-		methodFieldName := method.name + "Handler"
-		single := methodFieldName + " func" +
-			"(" + generateSingleField(method.params) + ")" +
-			"(" + generateSingleResult(method.results) + ")"
-		funResult = append(funResult, single)
-	}
-	mockTypeStruct := "type " + getMockName(typeName) + " struct{\n" + strings.Join(funResult, "\n") + "\n}\n"
-
-	methodResult := []string{}
-	for _, method := range methods {
-		single := "func ( this *" + getMockName(typeName) + ")" +
-			method.name +
-			"(" + generateSingleField(method.params) + ")" +
-			"(" + generateSingleResult(method.results) + "){\n"
-		paramNames := []string{}
-		for _, param := range method.params {
-			paramNames = append(paramNames, param.name)
-		}
-		methodFieldName := method.name + "Handler"
-		returnSingle := "this." + methodFieldName + "(" + strings.Join(paramNames, ",") + ")"
-		if len(method.results) == 0 {
-			single = single + returnSingle + "\n}\n"
-		} else {
-			single = single + "return " + returnSingle + "\n}\n"
-		}
-		methodResult = append(methodResult, single)
-	}
-	return mockTypeStruct + strings.Join(methodResult, "\n")
-}
-
-func generateSingleType(typeName string, methodInfo generateTypeInfo) string {
-	methods := []FunctionInfo{}
-	for _, singleMethodInfo := range methodInfo {
-		methods = append(methods, singleMethodInfo)
-	}
-	sort.Slice(methods, func(i int, j int) bool {
-		return methods[i].name < methods[j].name
-	})
-	result := []string{}
-	result = append(result, generateSingleInterface(typeName, methods))
-	result = append(result, generateSingleMock(typeName, methods))
-	return strings.Join(result, "\n")
-}
-
-func generateSingleInit(typeName string) string {
-	return "RegisterProxyMock([]" + getInterfaceName(typeName) + "{&" + getMockName(typeName) + "{}})"
-}
-
-var dirDeclTypeCache map[string]map[string]bool
-
-func getDirDeclTypeInner(dir string) (map[string]bool, error) {
-	fileInfo, err := ioutil.ReadDir(dir)
+func NewGenerator(fileRegex string, typeRegex string) *Generator {
+	var err error
+	result := &Generator{}
+	result.fileReg, err = regexp.CompilePOSIX(fileRegex)
 	if err != nil {
-		return nil, err
+		panic(fmt.Sprintf("编译文件正则表达式[%s]失败", fileRegex))
 	}
-	result := map[string]bool{}
-	for _, singleFileInfo := range fileInfo {
-		if strings.HasSuffix(singleFileInfo.Name(), ".go") == false {
+	result.typeReg, err = regexp.CompilePOSIX(typeRegex)
+	if err != nil {
+		panic(fmt.Sprintf("编译类型正则表达式[%s]失败", typeRegex))
+	}
+	return result
+}
+
+func (this *Generator) Run(analysisResult AnalysisResult) error {
+
+	for _, pkg := range analysisResult.Packages {
+		pkg = this.filterContent(pkg)
+
+		if len(pkg.Structs) == 0 {
 			continue
 		}
-		parserInfo, err := ParserSingleFile(dir + "/" + singleFileInfo.Name())
+		result, err := this.generateContent(pkg)
 		if err != nil {
-			return nil, err
-		}
-		for _, singleDeclType := range parserInfo.declType {
-			result[singleDeclType] = true
-		}
-	}
-	return result, nil
-}
-
-func getDirDeclType(dir string) (map[string]bool, error) {
-	data, ok := dirDeclTypeCache[dir]
-	if ok {
-		return data, nil
-	}
-
-	data, err := getDirDeclTypeInner(dir)
-	if err != nil {
-		return nil, err
-	}
-
-	dirDeclTypeCache[dir] = data
-	return data, nil
-}
-
-var packagePathToDir map[string]string
-
-func getPackagePathToSourceDir(packageName string, sourceDir string) (string, error) {
-	if packagePathToDir == nil {
-		packagePathToDir = map[string]string{}
-		// 配置包加载
-		cfg := &packages.Config{
-			Mode: packages.NeedName |
-				packages.NeedFiles |
-				packages.NeedCompiledGoFiles |
-				packages.NeedImports |
-				packages.NeedDeps |
-				packages.NeedTypes |
-				packages.NeedTypesInfo |
-				packages.NeedSyntax,
+			panic(err)
 		}
 
-		//加载包
-		pkgs, err := packages.Load(cfg, "./...", "github.com/fishedee/fishgo-boost/...")
+		result, err = this.formatSource(result)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "加载包失败: %v\n", err)
-			os.Exit(1)
+			panic(err)
 		}
-		for _, pkg := range pkgs {
-			packagePathToDir[pkg.PkgPath] = pkg.Dir
-		}
-	}
 
-	result, isExist := packagePathToDir[packageName]
-	if isExist == false {
-		panic("can not find path of package : " + packageName)
-	}
-	return result, nil
-}
-
-func generateSingleFileImport(data []ParserInfo, source string) (string, error) {
-	//解析源代码
-	sourceParserInfo, err := ParserSingleSource(source)
-	if err != nil {
-		return "", err
-	}
-
-	//建立导入符号的映射，key是类型的来源，ImportInfo是类型的来源
-	nameImport := map[string]ImportInfo{}
-	for _, singleParserInfo := range data {
-		for _, singleImport := range singleParserInfo.imports {
-			if singleImport.name == "_" {
-				continue
-			}
-			if singleImport.name == "." {
-				packagePath, err := getPackagePathToSourceDir(singleImport.path, singleParserInfo.dir)
-				if err != nil {
-					return "", err
-				}
-				dirImportTypes, err := getDirDeclType(packagePath)
-				if err != nil {
-					return "", err
-				}
-				for singleImportType, _ := range dirImportTypes {
-					if singleImportType[0] < 'A' || singleImportType[0] > 'Z' {
-						continue
-					}
-					nameImport[singleImportType] = singleImport
-				}
-			} else {
-				if singleImport.name != "" {
-					//import的路径带有重命名package的
-					nameImport[singleImport.name] = singleImport
-				} else {
-					//import的路径没有重命名package的
-					nameImport[path.Base(singleImport.path)] = singleImport
-				}
-			}
-		}
-	}
-	dirImportTypes, err := getDirDeclType(data[0].dir)
-	if err != nil {
-		return "", err
-	}
-	for singleImportType, _ := range dirImportTypes {
-		nameImport[singleImportType] = ImportInfo{}
-	}
-	for _, singleDeclType := range sourceParserInfo.declType {
-		nameImport[singleDeclType] = ImportInfo{}
-	}
-
-	result := map[string]ImportInfo{}
-	//遍历需要的命名导入
-	for _, singleUseType := range sourceParserInfo.useType {
-		if singleUseType == "string" ||
-			singleUseType == "int" || singleUseType == "int8" || singleUseType == "int16" || singleUseType == "int32" || singleUseType == "int64" ||
-			singleUseType == "float" || singleUseType == "float32" || singleUseType == "float64" ||
-			singleUseType == "byte" || singleUseType == "bool" ||
-			singleUseType == "error" {
-			continue
-		} else {
-			if singleUseType == "RegisterProxyMock" {
-				panic("ohno")
-			}
-			singleNameImport, ok := nameImport[singleUseType]
-			if ok {
-				result[singleNameImport.path] = singleNameImport
-			} else {
-				return "", errors.New(fmt.Sprintf("%v can not handle the type %v import", data[0].dir, singleUseType))
-			}
-		}
-	}
-
-	//拼凑导入符号
-	resultArray := []string{}
-	proxyPath := "github.com/fishedee/fishgo-boost/app/proxy"
-	hasImportProxyPath := false
-	for _, singleImportInfo := range result {
-		if singleImportInfo.path == "" {
-			continue
-		}
-		resultArray = append(
-			resultArray,
-			singleImportInfo.name+" \""+singleImportInfo.path+"\"",
-		)
-		if singleImportInfo.path == proxyPath {
-			hasImportProxyPath = true
-		}
-	}
-	if hasImportProxyPath == false {
-		resultArray = append(resultArray, ". \"github.com/fishedee/fishgo-boost/app/proxy\"")
-	}
-	return "import (" + strings.Join(resultArray, "\n") + ")\n", nil
-}
-
-type generateTypeInfo map[string]FunctionInfo
-
-func generateGetTypeInfo(data ParserInfo, result map[string]generateTypeInfo) error {
-	reg, err := regexp.CompilePOSIX(Config.typeregex)
-	if err != nil {
-		return err
-	}
-	for _, fun := range data.functions {
-		if len(fun.receiver) == 0 {
-			continue
-		}
-		receiverName := fun.receiver[0].tag
-		if receiverName[0] == '*' {
-			receiverName = receiverName[1:]
-		}
-		if reg.Match([]byte(receiverName)) == false {
-			continue
-		}
-		if fun.name[0] < 'A' || fun.name[0] > 'Z' {
-			continue
-		}
-		for _, singleParam := range fun.params {
-			if strings.Index(singleParam.tag, "interface{") != -1 {
-				return errors.New("invalid has interface type![" + singleParam.tag + "]")
-			}
-			if strings.Index(singleParam.tag, "func(") != -1 {
-				return errors.New("invalid has function type![" + singleParam.tag + "]")
-			}
-		}
-		functionName := fun.name
-		typeInfo, isExist := result[receiverName]
-		if isExist == false {
-			typeInfo = generateTypeInfo{}
-			result[receiverName] = typeInfo
-		}
-		_, isExist = typeInfo[functionName]
-		if isExist == false {
-			typeInfo[functionName] = fun
-		} else {
-			return errors.New("duplicate method![" + receiverName + "." + functionName + "]")
+		err = this.writeFile(pkg.Dir, result)
+		if err != nil {
+			panic(err)
 		}
 	}
 	return nil
 }
 
-func generateSingleFileInterface(data []ParserInfo) (string, error) {
-	typeInfo := map[string]generateTypeInfo{}
-	for _, singleParserInfo := range data {
-		err := generateGetTypeInfo(singleParserInfo, typeInfo)
-		if err != nil {
-			return "", errors.New(singleParserInfo.file + ":" + err.Error())
-		}
-	}
-	typeInfoList := []struct {
-		name string
-		info generateTypeInfo
-	}{}
-	for singleTypeName, singleTypeInfo := range typeInfo {
-		typeInfoList = append(typeInfoList, struct {
-			name string
-			info generateTypeInfo
-		}{singleTypeName, singleTypeInfo})
-	}
-	sort.Slice(typeInfoList, func(i int, j int) bool {
-		return typeInfoList[i].name < typeInfoList[j].name
-	})
-	result := []string{}
-	for _, singleTypeInfo := range typeInfoList {
-		singleResult := generateSingleType(singleTypeInfo.name, singleTypeInfo.info)
-		result = append(result, singleResult)
-	}
+func (this *Generator) generateContent(pkg PackageInfo) (string, error) {
+	packageInfo := "package " + pkg.Name + "\n"
 
-	mockImplements := strings.Join(result, "\n")
-
-	result2 := []string{}
-	for _, singleTypeInfo := range typeInfoList {
-		singleResult := generateSingleInit(singleTypeInfo.name)
-		result2 = append(result2, singleResult)
-	}
-
-	initImplements := "func init(){\n" + strings.Join(result2, "\n") + "\n}\n"
-
-	return mockImplements + "\n" + initImplements, nil
-}
-
-func generateSingleFileContent(data []ParserInfo) (string, error) {
-	packageInfo := "package " + data[0].packname + "\n"
-
-	contentInfo, err := generateSingleFileInterface(data)
+	contentInfo, err := this.generateSingleFileCode(pkg)
 	if err != nil {
 		return "", err
 	}
 
-	importInfo, err := generateSingleFileImport(data, packageInfo+contentInfo)
+	importInfo, err := this.generateSingleFileImport(pkg)
 	if err != nil {
 		return "", err
 	}
 	return packageInfo + importInfo + contentInfo, nil
 }
 
-func generateSingleFileFormat(filename string, data string) (string, error) {
+func (this *Generator) combineDepImports(allDepImports map[string]ImportInfo, depImports []ImportInfo) {
+	for _, importInfo := range depImports {
+		allDepImports[importInfo.PkgPath] = importInfo
+	}
+}
+
+func (this *Generator) generateSingleFileImport(pkg PackageInfo) (string, error) {
+	depImports := map[string]ImportInfo{}
+	for _, structInfo := range pkg.Structs {
+		for _, methodInfo := range structInfo.Methods {
+			this.combineDepImports(depImports, methodInfo.DepImports)
+		}
+	}
+	proxyPath := "github.com/fishedee/fishgo-boost/app/proxy"
+	_, isExists := depImports[proxyPath]
+	if isExists == false {
+		depImports[proxyPath] = ImportInfo{
+			PkgName:    ".",
+			PkgPath:    proxyPath,
+			Code:       ". \"" + proxyPath + "\"",
+			ImportType: importTypeDot,
+		}
+	}
+
+	allImports := []string{}
+	for _, depImport := range depImports {
+		allImports = append(allImports, depImport.Code)
+	}
+	return fmt.Sprintf("import ( %s )\n", strings.Join(allImports, "\n")), nil
+}
+
+func (this *Generator) generateSingleFileCode(pkg PackageInfo) (string, error) {
+	//类型排序
+	sort.Slice(pkg.Structs, func(i int, j int) bool {
+		return pkg.Structs[i].Name < pkg.Structs[j].Name
+	})
+	typeCodes := []string{}
+	for _, structInfo := range pkg.Structs {
+		//方法排序
+		sort.Slice(structInfo.Methods, func(i int, j int) bool {
+			return structInfo.Methods[i].Name < structInfo.Methods[j].Name
+		})
+		typeCodes = append(typeCodes, this.generateSingleTypeInterface(structInfo))
+		typeCodes = append(typeCodes, this.generateSingleTypeMock(structInfo))
+	}
+
+	mockImplements := strings.Join(typeCodes, "\n")
+
+	initCodes := []string{}
+	for _, singleTypeInfo := range pkg.Structs {
+		initCode := this.generateSingleInit(singleTypeInfo)
+		initCodes = append(initCodes, initCode)
+	}
+
+	initImplements := fmt.Sprintf("func init(){\n %s \n}\n", strings.Join(initCodes, "\n"))
+
+	return mockImplements + "\n" + initImplements, nil
+}
+
+func (this *Generator) filterContent(pkg PackageInfo) PackageInfo {
+	newStructs := []StructInfo{}
+	for _, structInfo := range pkg.Structs {
+		if structInfo.IsPublic == false {
+			continue
+		}
+		if this.fileReg.Match([]byte(structInfo.File)) == false {
+			continue
+		}
+		if this.typeReg.Match([]byte(structInfo.Name)) == false {
+			continue
+		}
+		newMethods := []MethodInfo{}
+		for _, methodInfo := range structInfo.Methods {
+			if methodInfo.IsPublic == false {
+				continue
+			}
+			newMethods = append(newMethods, methodInfo)
+		}
+		structInfo.Methods = newMethods
+		newStructs = append(newStructs, structInfo)
+	}
+
+	result := pkg
+	result.Structs = newStructs
+	return result
+}
+
+func (this *Generator) formatSource(data string) (string, error) {
 	result, err := format.Source([]byte(data))
 	if err != nil {
 		return "", errors.New(err.Error() + "," + data)
@@ -391,61 +166,99 @@ func generateSingleFileFormat(filename string, data string) (string, error) {
 	return string(result), nil
 }
 
-func generateSingleFileWrite(filename string, data string) error {
-	oldData, err := ioutil.ReadFile(filename)
+func (this *Generator) writeFile(dir string, data string) error {
+	basePath := filepath.Base(dir)
+	filePath := filepath.Join(dir, basePath+"_mock.go")
+	oldData, err := os.ReadFile(filePath)
 	if err == nil && string(oldData) == data {
 		return nil
 	}
-	return ioutil.WriteFile(filename, []byte(data), 0644)
+	return os.WriteFile(filePath, []byte(data), 0644)
 }
 
-func generateSingleFileNormal(dirname string, data []ParserInfo) error {
-	filename := dirname + "/" + GetGenerateFileName(dirname)
-
-	result, err := generateSingleFileContent(data)
-	if err != nil {
-		return err
-	}
-
-	result, err = generateSingleFileFormat(filename, result)
-	if err != nil {
-		return err
-	}
-
-	err = generateSingleFileWrite(filename, result)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (this *Generator) getInterfaceName(typeName string) string {
+	return "I" + strings.ToUpper(typeName[0:1]) + typeName[1:]
 }
 
-func generateSingleFile(dirname string, data []ParserInfo) error {
-	err := generateSingleFileNormal(dirname, data)
-	if err != nil {
-		return err
-	}
-	return nil
+func (this *Generator) getMockName(typeName string) string {
+	return typeName + "Mock"
 }
 
-func Generator(data map[string][]os.FileInfo) error {
-	for singleKey, singleDir := range data {
-		singleResult := []ParserInfo{}
-		for _, singleFile := range singleDir {
-			singleFileResult, err := ParserSingleFile(singleKey + "/" + singleFile.Name())
-			if err != nil {
-				return err
-			}
-			singleResult = append(singleResult, singleFileResult)
+func (this *Generator) generateSingleField(data []FunctionParam) string {
+	var result []string
+	for _, singleData := range data {
+		result = append(result, singleData.Code)
+	}
+	return strings.Join(result, ",")
+}
+
+func (this *Generator) generateSingleFieldName(data []FunctionParam) string {
+	var result []string
+	for _, singleData := range data {
+		result = append(result, singleData.Name)
+	}
+	return strings.Join(result, ",")
+}
+
+func (this *Generator) generateSingleResult(data []FunctionParam) string {
+	var result []string
+	for _, singleData := range data {
+		result = append(result, singleData.Type.Code)
+	}
+	return strings.Join(result, ",")
+}
+
+func (this *Generator) generateSingleTypeInterface(structInfo StructInfo) string {
+	funResult := []string{}
+	for _, method := range structInfo.Methods {
+		single := fmt.Sprintf("%s(%s)(%s)",
+			method.Name,
+			this.generateSingleField(method.Params),
+			this.generateSingleResult(method.Results),
+		)
+		funResult = append(funResult, single)
+	}
+	return fmt.Sprintf("type %s interface{\n %s \n}\n",
+		this.getInterfaceName(structInfo.Name),
+		strings.Join(funResult, "\n"),
+	)
+}
+
+func (this *Generator) generateSingleTypeMock(structInfo StructInfo) string {
+	funResult := []string{}
+	for _, method := range structInfo.Methods {
+		single := fmt.Sprintf("%s func (%s)(%s)",
+			method.Name+"Handler",
+			this.generateSingleField(method.Params),
+			this.generateSingleResult(method.Results))
+		funResult = append(funResult, single)
+	}
+	mockTypeStruct := fmt.Sprintf("type %s struct{\n %s \n}\n",
+		this.getMockName(structInfo.Name),
+		strings.Join(funResult, "\n"),
+	)
+
+	methodResult := []string{}
+	for _, method := range structInfo.Methods {
+		returnCode := ""
+		if len(method.Results) > 0 {
+			returnCode = "return"
 		}
-		err := generateSingleFile(singleKey, singleResult)
-		if err != nil {
-			return errors.New(singleKey + ":" + err.Error())
-		}
+		single := fmt.Sprintf("func (this * %s) %s (%s)(%s){\n %s this.%s(%s)\n}\n",
+			this.getMockName(structInfo.Name),
+			method.Name,
+			this.generateSingleField(method.Params),
+			this.generateSingleResult(method.Results),
+			returnCode,
+			method.Name+"Handler",
+			this.generateSingleFieldName(method.Params))
+		methodResult = append(methodResult, single)
 	}
-	return nil
+	return mockTypeStruct + strings.Join(methodResult, "\n")
 }
 
-func init() {
-	dirDeclTypeCache = map[string]map[string]bool{}
+func (this *Generator) generateSingleInit(structInfo StructInfo) string {
+	return fmt.Sprintf("RegisterProxyMock([] %s { & %s{}})",
+		this.getInterfaceName(structInfo.Name),
+		this.getMockName(structInfo.Name))
 }

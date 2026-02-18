@@ -1,5 +1,7 @@
 package unit
 
+import "time"
+
 type UnitAo struct {
 	unitDb IUnitDb
 }
@@ -10,7 +12,7 @@ func NewUnitAo(unitDb IUnitDb) IUnitAo {
 	}
 }
 
-func (this *UnitAo) Search(where Unit) Units {
+func (this *UnitAo) Search(where Unit, t time.Time) Units {
 	return Units{}
 }
 

@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"go/format"
 	"os"
 	"path/filepath"
@@ -74,7 +73,6 @@ func (this *Generator) Run(packages []GeneratePackage) {
 		"func init(){\n" +
 		initBody.String() + "\n" +
 		"}\n"
-	fmt.Printf("finish generate:%v\n", filePath)
 	oldData, _ := os.ReadFile(filePath)
 	if string(oldData) == result {
 		return
