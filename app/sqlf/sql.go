@@ -65,7 +65,7 @@ func NewSqlfDbTest() SqlfDB {
 	}
 	//sqlite3指定_loc以后，读取的字符串默认转换为UTC时区，然后转换为_loc指定的时区，auto代表Local时区
 	db, err := NewSqlfDB(log, nil, SqlfDBConfig{
-		Driver:     "sqlite",
+		Driver:     "sqlite_localtime",
 		SourceName: ":memory:?_inttotime=1",
 		Debug:      true,
 	})
