@@ -16,7 +16,7 @@ func initSqliteDatabase2() SqlfDB {
 		panic(err)
 	}
 	db, err := NewSqlfDB(log, nil, SqlfDBConfig{
-		Driver:     "sqlite_localtime",
+		Driver:     "sqlite_fix",
 		SourceName: ":memory:?_inttotime=1",
 		Debug:      true,
 	})
@@ -81,17 +81,45 @@ func parseTime(str string) time.Time {
 func testInsertTime(t *testing.T, initDatabase func() SqlfDB) {
 	db := initDatabase()
 
+	/*
+		sqlite的时间字段有较多的问题，它的特点是，时间字段只是字符串类型，没有时区概念，也不会自动进行归一化，所以
+
+		* 最佳实践就是时间字段只能存UTC时区的规范化格式的字符串，形如2020-07-01 00:00:00，注意不含时区部分
+		* 如果存LOCAL时区的字符串，就会导致0时间无法读出来，而且绝大部分的sqlite驱动都遵循这个标准，违反这个标准就容易导致换个驱动就读不出来
+		* 如果时间带时区部分，那么搜索就难以匹配，虽然'2020-07-01 08:00:00+08:00'和'2020-07-01 00:00:00+00:00'是同一个时刻，但是sqlite没有对所有时间规范化，它们在字符串形式上不一致，就会导致失败。所以时间不能含时区部分。
+		* 使用SQL来插入数据的时候，我们要使用datetime函数来做时间数据的归一化。使用SQLF API来插入数据的时候，SQLF已经默认做了归一化
+	*/
 	//用sql插入数据
-	db.MustExec(`
+	if db.Engine() == SQLITE {
+		db.MustExec(`
+		insert into t_user(userId, name , createTime ,modifyTime )values
+		(10001,'fish',datetime('2020-07-01 00:00:00+08:00'),datetime('2020-07-02 18:00:00+08:00'))
+	`)
+	} else {
+		db.MustExec(`
 		insert into t_user(userId, name , createTime ,modifyTime )values
 		(10001,'fish','2020-07-01 00:00:00','2020-07-02 18:00:00')
 	`)
+	}
 
 	users := []User2{}
 	db.MustQuery(&users, "select * from t_user where userId = 10001")
 
+	user1 := User2{
+		UserId:     10001,
+		Name:       "fish",
+		CreateTime: parseTime("2020-07-01 00:00:00"),
+		ModifyTime: parseTime("2020-07-02 18:00:00"),
+	}
+
 	AssertEqual(t, users, []User2{
-		{UserId: 10001, Name: "fish", CreateTime: parseTime("2020-07-01 00:00:00"), ModifyTime: parseTime("2020-07-02 18:00:00")},
+		user1,
+	})
+
+	db.MustQuery(&users, "select * from t_user where createTime = ?", parseTime("2020-07-01 00:00:00"))
+
+	AssertEqual(t, users, []User2{
+		user1,
 	})
 
 	//用api插入数据
@@ -104,6 +132,16 @@ func testInsertTime(t *testing.T, initDatabase func() SqlfDB) {
 	db.MustExec("insert into t_user(?.insertColumn) values ?.insertValue", user2, user2)
 
 	db.MustQuery(&users, "select * from t_user where userId = 10002")
+
+	AssertEqual(t, users, []User2{
+		user2,
+	})
+
+	if db.Engine() == SQLITE {
+		db.MustQuery(&users, "select * from t_user where createTime = datetime('2020-08-01 00:00:00+08:00')")
+	} else {
+		db.MustQuery(&users, "select * from t_user where createTime = '2020-08-01 00:00:00'")
+	}
 
 	AssertEqual(t, users, []User2{
 		user2,

@@ -18,7 +18,7 @@ func initSqliteDatabase() SqlfDB {
 		panic(err)
 	}
 	db, err := NewSqlfDB(log, nil, SqlfDBConfig{
-		Driver:     "sqlite_localtime",
+		Driver:     "sqlite_fix",
 		SourceName: ":memory:?_inttotime=1",
 		Debug:      true,
 	})
@@ -32,24 +32,24 @@ func initSqliteDatabase() SqlfDB {
 		age integer not null,
 		money decimal(14,2) not null,
 		loginTime timestamp not null,
-		createTime timestamp not null default '1970-01-01 08:00:00',
-		modifyTime timestamp not null default '1970-01-01 08:00:00'
+		createTime timestamp not null default 0,
+		modifyTime timestamp not null default 0
 	);
 
 	create table t_item(
 		itemId integer primary key autoincrement,
 		name char(32) not null,
 		onShelfTime timestamp not null,
-		createTime timestamp not null default '1970-01-01 08:00:00',
-		modifyTime timestamp not null default '1970-01-01 08:00:00'
+		createTime timestamp not null default 0,
+		modifyTime timestamp not null default 0
 	);
 
 	create table t_article(
 		articleId integer primary key autoincrement,
 		data text not null,
 		remark text not null,
-		createTime timestamp not null default '1970-01-01 08:00:00',
-		modifyTime timestamp not null default '1970-01-01 08:00:00'
+		createTime timestamp not null default 0,
+		modifyTime timestamp not null default 0
 	);
 	`)
 	return db
@@ -168,19 +168,6 @@ func testStructType(t *testing.T, db SqlfCommon) {
 	AssertEqual(t, users, []User{
 		User{UserId: 1, Name: "fish", Age: 12, Money: "0", LoginTime: time.Unix(1, 0), CreateTime: time.Unix(0, 0), ModifyTime: time.Unix(0, 0)},
 		User{UserId: 2, Name: "cat", Age: 34, Money: "102.35", LoginTime: time.Unix(2, 0), CreateTime: time.Unix(0, 0), ModifyTime: time.Unix(0, 0)},
-	})
-
-	today, err := time.ParseInLocation("2006-01-02 15:04:05", "2026-02-19 08:00:00", time.Local)
-	if err != nil {
-		panic(err)
-	}
-
-	db.MustExec("update t_user set createTime = ? where userId = 1", today)
-
-	db.MustQuery(&users, "select * from t_user where createTime = ?", today)
-
-	AssertEqual(t, users, []User{
-		User{UserId: 1, Name: "fish", Age: 12, Money: "0", LoginTime: time.Unix(1, 0), CreateTime: today, ModifyTime: time.Unix(0, 0)},
 	})
 
 	//删除一个数据

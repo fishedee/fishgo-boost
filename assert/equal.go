@@ -91,7 +91,7 @@ func deepValueEqual(v1, v2 reflect.Value, visited map[visit]bool, depth int, err
 			time1 := v1.Interface().(time.Time)
 			time2 := v2.Interface().(time.Time)
 			if !time1.Equal(time2) {
-				*errorString = fmt.Sprintf("%v: %#v != %#v", equalDesc, time1.Format("2006-01-02 15:04:05"), time2.Format("2006-01-02 15:04:05"))
+				*errorString = fmt.Sprintf("%v: %#v != %#v", equalDesc, time1.Format("2006-01-02 15:04:05-07:00"), time2.Format("2006-01-02 15:04:05-07:00"))
 				return false
 			}
 			return true

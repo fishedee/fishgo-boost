@@ -2,12 +2,21 @@ package sqlf
 
 import (
 	gosql "database/sql"
+	"strings"
 	"time"
 
 	. "github.com/fishedee/fishgo-boost/app/log"
 	. "github.com/fishedee/fishgo-boost/app/metric"
 	_ "github.com/go-sql-driver/mysql"
 	_ "modernc.org/sqlite"
+)
+
+type ENGINE int
+
+const (
+	MYSQL ENGINE = 1 + iota
+	SQLITE
+	UNKNOWN
 )
 
 type SqlfResult interface {
@@ -24,6 +33,8 @@ type SqlfCommon interface {
 
 	Exec(query string, args ...interface{}) (SqlfResult, error)
 	MustExec(query string, args ...interface{}) SqlfResult
+
+	Engine() ENGINE
 }
 
 type SqlfTx interface {
@@ -65,7 +76,7 @@ func NewSqlfDbTest() SqlfDB {
 	}
 	//sqlite3指定_loc以后，读取的字符串默认转换为UTC时区，然后转换为_loc指定的时区，auto代表Local时区
 	db, err := NewSqlfDB(log, nil, SqlfDBConfig{
-		Driver:     "sqlite_localtime",
+		Driver:     "sqlite_fix",
 		SourceName: ":memory:?_inttotime=1",
 		Debug:      true,
 	})
@@ -139,6 +150,16 @@ type dbImplement struct {
 	log     Log
 	isDebug bool
 	driver  string
+}
+
+func (this *dbImplement) Engine() ENGINE {
+	if strings.Contains(this.driver, "mysql") {
+		return MYSQL
+	} else if strings.Contains(this.driver, "sqlite") {
+		return SQLITE
+	} else {
+		return UNKNOWN
+	}
 }
 
 func (this *dbImplement) Query(data interface{}, query string, args ...interface{}) error {
@@ -268,6 +289,16 @@ type txImplement struct {
 	isDebug     bool
 	hasCommit   bool
 	hasRollback bool
+}
+
+func (this *txImplement) Engine() ENGINE {
+	if strings.Contains(this.driver, "mysql") {
+		return MYSQL
+	} else if strings.Contains(this.driver, "sqlite") {
+		return SQLITE
+	} else {
+		return UNKNOWN
+	}
 }
 
 func (this *txImplement) Query(data interface{}, query string, args ...interface{}) error {

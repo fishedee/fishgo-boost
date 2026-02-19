@@ -1,3 +1,7 @@
+## v1.5.0
+
+* 新增sqlite_fix驱动，解决sqlite的timestamp字段难以搜索和插入的问题
+
 ## v1.4.2
 
 * 补上sqlf漏提交的文件
