@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(done)",
+      "Bash(git -C /mnt/c/Users/fishe/Project/fishgo-boost log --oneline)",
+      "Bash(git -C /mnt/c/Users/fishe/Project/fishgo-boost status)",
+      "Bash(git -C /mnt/c/Users/fishe/Project/fishgo-boost log --oneline -5)",
+      "Bash(go build:*)",
+      "Bash(go vet:*)",
+      "Bash(git -C /mnt/c/Users/fishe/Project/fishgo-boost diff --stat cmd/mockgen/)",
+      "Bash(grep:*)"
+    ]
+  }
+}
