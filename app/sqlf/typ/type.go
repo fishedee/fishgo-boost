@@ -1,4 +1,4 @@
-package sqlf
+package typ
 
 import (
 	gosql "database/sql"
@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+
+	. "github.com/fishedee/fishgo-boost/app/sqlf/dialect"
 )
 
 const (
@@ -17,13 +19,13 @@ const (
 	UpdateColumnValue = "?.updateColumnValue"
 )
 
-type sqlToArgsType = func(dialect sqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error)
+type sqlToArgsType = func(dialect SqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error)
 
-type sqlFromResultType = func(dialect sqlDialect, v interface{}, rows *gosql.Rows) error
+type sqlFromResultType = func(dialect SqlDialect, v interface{}, rows *gosql.Rows) error
 
-type sqlColumnType = func(dialect sqlDialect, isInsert bool, builder *strings.Builder) error
+type sqlColumnType = func(dialect SqlDialect, isInsert bool, builder *strings.Builder) error
 
-type sqlSetValueType = func(dialect sqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error)
+type sqlSetValueType = func(dialect SqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error)
 
 type sqlTypeOperation struct {
 	toArgs     sqlToArgsType
@@ -54,10 +56,10 @@ func elemType(t reflect.Type) reflect.Type {
 	}
 }
 
-func extractResult(dialect sqlDialect, data interface{}, rows *gosql.Rows) error {
+func ExtractResult(dialect SqlDialect, data interface{}, rows *gosql.Rows) error {
 	dataType := reflect.TypeOf(data)
 	dataElemType := elemType(dataType)
-	isNeedDynamicConvert := dialect.needFromResultConvert(dataElemType)
+	isNeedDynamicConvert := dialect.NeedFromResultConvert(dataElemType)
 	if isNeedDynamicConvert == true {
 		//需要动态数据转换
 		return dynamicType_fromResult(dialect, data, rows)
@@ -68,10 +70,10 @@ func extractResult(dialect sqlDialect, data interface{}, rows *gosql.Rows) error
 	}
 }
 
-func convertToArgs(dialect sqlDialect, data interface{}, operation sqlTypeOperation) sqlToArgsType {
+func convertToArgs(dialect SqlDialect, data interface{}, operation sqlTypeOperation) sqlToArgsType {
 	dataType := reflect.TypeOf(data)
 	dataElemType := elemType(dataType)
-	isNeedDynamicConvert := dialect.needToArgsConvert(dataElemType)
+	isNeedDynamicConvert := dialect.NeedToArgsConvert(dataElemType)
 	if isNeedDynamicConvert == true {
 		//需要动态数据转换
 		return dynamicType_toArgsfunc
@@ -108,7 +110,7 @@ func checkStartWith(query string, match string) bool {
 	}
 }
 
-func genSql(dialect sqlDialect, query string, args []interface{}) (string, []interface{}, error) {
+func GenSql(dialect SqlDialect, query string, args []interface{}) (string, []interface{}, error) {
 	//获得operation
 	operation := make([]sqlTypeOperation, len(args), len(args))
 	operationToArgs := make([]sqlToArgsType, len(args), len(args))

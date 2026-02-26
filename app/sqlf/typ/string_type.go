@@ -1,28 +1,30 @@
-package sqlf
+package typ
 
 import (
 	gosql "database/sql"
 	"errors"
 	"reflect"
 	"strings"
+
+	. "github.com/fishedee/fishgo-boost/app/sqlf/dialect"
 )
 
 func initStringSqlTypeOperation() {
 	a := ""
 	stringType := reflect.TypeOf(a)
 	sqlTypeOperation := sqlTypeOperation{
-		toArgs: func(dialect sqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		toArgs: func(dialect SqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			builder.WriteByte('?')
 			in = append(in, v)
 			return in, nil
 		},
-		fromResult: func(dialect sqlDialect, v interface{}, rows *gosql.Rows) error {
+		fromResult: func(dialect SqlDialect, v interface{}, rows *gosql.Rows) error {
 			return errors.New("string dos not support setValue")
 		},
-		column: func(dialect sqlDialect, isInsert bool, builder *strings.Builder) error {
+		column: func(dialect SqlDialect, isInsert bool, builder *strings.Builder) error {
 			return errors.New("string dos not support column")
 		},
-		setValue: func(dialect sqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		setValue: func(dialect SqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			return nil, errors.New("string dos not support setValue")
 		},
 	}
@@ -33,13 +35,13 @@ func initStringPtrSqlTypeOperation() {
 	var a *string
 	stringPtrType := reflect.TypeOf(a)
 	sqlTypeOperation := sqlTypeOperation{
-		toArgs: func(dialect sqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		toArgs: func(dialect SqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			data := v.(*string)
 			builder.WriteByte('?')
 			in = append(in, *data)
 			return in, nil
 		},
-		fromResult: func(dialect sqlDialect, v interface{}, rows *gosql.Rows) error {
+		fromResult: func(dialect SqlDialect, v interface{}, rows *gosql.Rows) error {
 			if rows.Next() {
 				err := rows.Scan(v)
 				if err != nil {
@@ -50,10 +52,10 @@ func initStringPtrSqlTypeOperation() {
 				return errors.New("has no result")
 			}
 		},
-		column: func(dialect sqlDialect, isInsert bool, builder *strings.Builder) error {
+		column: func(dialect SqlDialect, isInsert bool, builder *strings.Builder) error {
 			return errors.New("*string dos not support column")
 		},
-		setValue: func(dialect sqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		setValue: func(dialect SqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			return nil, errors.New("*string dos not support setValue")
 		},
 	}
@@ -64,7 +66,7 @@ func initStringSliceSqlTypeOperation() {
 	a := []string{""}
 	stringSliceType := reflect.TypeOf(a)
 	sqlTypeOperation := sqlTypeOperation{
-		toArgs: func(dialect sqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		toArgs: func(dialect SqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			data := v.([]string)
 			builder.WriteString(getSqlComma(len(data)))
 			for _, single := range data {
@@ -72,13 +74,13 @@ func initStringSliceSqlTypeOperation() {
 			}
 			return in, nil
 		},
-		fromResult: func(dialect sqlDialect, v interface{}, rows *gosql.Rows) error {
+		fromResult: func(dialect SqlDialect, v interface{}, rows *gosql.Rows) error {
 			return errors.New("[]string dos not support setValue")
 		},
-		column: func(dialect sqlDialect, isInsert bool, builder *strings.Builder) error {
+		column: func(dialect SqlDialect, isInsert bool, builder *strings.Builder) error {
 			return errors.New("[]string dos not support column")
 		},
-		setValue: func(dialect sqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		setValue: func(dialect SqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			return nil, errors.New("[]string dos not support setValue")
 		},
 	}
@@ -89,7 +91,7 @@ func initStringSlicePtrSqlTypeOperation() {
 	var a *[]string
 	stringSlicePtrType := reflect.TypeOf(a)
 	sqlTypeOperation := sqlTypeOperation{
-		toArgs: func(dialect sqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		toArgs: func(dialect SqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			data := *(v.(*[]string))
 			builder.WriteString(getSqlComma(len(data)))
 			for _, single := range data {
@@ -97,7 +99,7 @@ func initStringSlicePtrSqlTypeOperation() {
 			}
 			return in, nil
 		},
-		fromResult: func(dialect sqlDialect, v interface{}, rows *gosql.Rows) error {
+		fromResult: func(dialect SqlDialect, v interface{}, rows *gosql.Rows) error {
 			data := v.(*[]string)
 			result := []string{}
 			var temp string
@@ -111,10 +113,10 @@ func initStringSlicePtrSqlTypeOperation() {
 			*data = result
 			return nil
 		},
-		column: func(dialect sqlDialect, isInsert bool, builder *strings.Builder) error {
+		column: func(dialect SqlDialect, isInsert bool, builder *strings.Builder) error {
 			return errors.New("*[]string dos not support column")
 		},
-		setValue: func(dialect sqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		setValue: func(dialect SqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			return nil, errors.New("*[]string dos not support setValue")
 		},
 	}

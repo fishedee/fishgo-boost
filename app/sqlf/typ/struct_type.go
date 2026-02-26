@@ -1,4 +1,4 @@
-package sqlf
+package typ
 
 import (
 	gosql "database/sql"
@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	. "github.com/fishedee/fishgo-boost/app/sqlf/dialect"
 	. "github.com/fishedee/fishgo-boost/language"
 )
 
@@ -111,14 +112,14 @@ func initSqlToArgs(t reflect.Type) sqlToArgsType {
 	tKind := getTypeKind(t)
 	if tKind == 5 {
 		tName := t.String()
-		return func(dialect sqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		return func(dialect SqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			return nil, errors.New(fmt.Sprintf("%v dos not support toArgs", tName))
 		}
 	}
 
-	structToArgs := func(t reflect.Type) func(dialect sqlDialect, isInsert bool, v reflect.Value, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+	structToArgs := func(t reflect.Type) func(dialect SqlDialect, isInsert bool, v reflect.Value, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 		fields := getStructPublicField(t)
-		return func(dialect sqlDialect, isInsert bool, v reflect.Value, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		return func(dialect SqlDialect, isInsert bool, v reflect.Value, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			if isInsert == false {
 				return nil, errors.New("struct can not to args in none insert ")
 			}
@@ -131,10 +132,10 @@ func initSqlToArgs(t reflect.Type) sqlToArgsType {
 				if field.isCreated || field.isUpdated {
 					in = append(in, time.Now())
 				} else {
-					if dialect.needToArgsConvert(field.fieldType) {
+					if dialect.NeedToArgsConvert(field.fieldType) {
 						//动态数据转换后插入
 						argvValue := v.FieldByIndex(field.index)
-						in = append(in, dialect.toArgsConvertValue(argvValue))
+						in = append(in, dialect.ToArgsConvertValue(argvValue))
 					} else {
 						//直接插入
 						in = append(in, v.FieldByIndex(field.index).Interface())
@@ -151,7 +152,7 @@ func initSqlToArgs(t reflect.Type) sqlToArgsType {
 
 	if tKind == 1 {
 		structHandler := structToArgs(t)
-		return func(dialect sqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		return func(dialect SqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			var err error
 			value := reflect.ValueOf(v)
 			builder.WriteByte('(')
@@ -164,7 +165,7 @@ func initSqlToArgs(t reflect.Type) sqlToArgsType {
 		}
 	} else if tKind == 2 {
 		structHandler := structToArgs(t.Elem())
-		return func(dialect sqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		return func(dialect SqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			var err error
 			value := reflect.ValueOf(v).Elem()
 			builder.WriteByte('(')
@@ -176,10 +177,10 @@ func initSqlToArgs(t reflect.Type) sqlToArgsType {
 			return in, nil
 		}
 	} else {
-		structSliceToArgs := func(t reflect.Type) func(dialect sqlDialect, isInsert bool, value reflect.Value, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		structSliceToArgs := func(t reflect.Type) func(dialect SqlDialect, isInsert bool, value reflect.Value, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			structHandler := structToArgs(t.Elem())
 
-			return func(dialect sqlDialect, isInsert bool, value reflect.Value, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+			return func(dialect SqlDialect, isInsert bool, value reflect.Value, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 				var err error
 				length := value.Len()
 				for i := 0; i != length; i++ {
@@ -200,13 +201,13 @@ func initSqlToArgs(t reflect.Type) sqlToArgsType {
 
 		if tKind == 3 {
 			structSliceHandler := structSliceToArgs(t)
-			return func(dialect sqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+			return func(dialect SqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 				value := reflect.ValueOf(v)
 				return structSliceHandler(dialect, isInsert, value, in, builder)
 			}
 		} else {
 			structSliceHandler := structSliceToArgs(t.Elem())
-			return func(dialect sqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+			return func(dialect SqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 				value := reflect.ValueOf(v).Elem()
 				return structSliceHandler(dialect, isInsert, value, in, builder)
 			}
@@ -218,7 +219,7 @@ func initSqlColumn(t reflect.Type) sqlColumnType {
 	tKind := getTypeKind(t)
 	if tKind == 5 {
 		tName := t.String()
-		return func(dialect sqlDialect, isInsert bool, builder *strings.Builder) error {
+		return func(dialect SqlDialect, isInsert bool, builder *strings.Builder) error {
 			return errors.New(fmt.Sprintf("%v dos not support column", tName))
 		}
 	}
@@ -234,7 +235,7 @@ func initSqlColumn(t reflect.Type) sqlColumnType {
 		fields = getStructPublicField(t.Elem().Elem())
 	}
 
-	return func(dialect sqlDialect, isInsert bool, builder *strings.Builder) error {
+	return func(dialect SqlDialect, isInsert bool, builder *strings.Builder) error {
 		hasData := false
 		for _, field := range fields {
 			if isInsert && field.isAutoIncr {
@@ -243,7 +244,7 @@ func initSqlColumn(t reflect.Type) sqlColumnType {
 			if hasData {
 				builder.WriteByte(',')
 			}
-			appendQuotedIdentifier(dialect, field.name, builder)
+			AppendQuotedIdentifier(dialect, field.name, builder)
 			hasData = true
 		}
 		return nil
@@ -254,7 +255,7 @@ func initSqlFromResult(t reflect.Type) sqlFromResultType {
 	tKind := getTypeKind(t)
 	if tKind != 4 {
 		tName := t.String()
-		return func(dialect sqlDialect, v interface{}, rows *gosql.Rows) error {
+		return func(dialect SqlDialect, v interface{}, rows *gosql.Rows) error {
 			return errors.New(fmt.Sprintf("%v dos not support fromResult", tName))
 		}
 	}
@@ -266,7 +267,7 @@ func initSqlFromResult(t reflect.Type) sqlFromResultType {
 		fieldInfoMap[single.name] = single
 		fieldInfoMap[strings.ToLower(single.name)] = single
 	}
-	return func(dialect sqlDialect, v interface{}, rows *gosql.Rows) error {
+	return func(dialect SqlDialect, v interface{}, rows *gosql.Rows) error {
 		//配置列
 		columns, err := rows.Columns()
 		if err != nil {
@@ -274,15 +275,15 @@ func initSqlFromResult(t reflect.Type) sqlFromResultType {
 		}
 		temp := reflect.New(structType).Elem()
 		tempScans := make([]interface{}, len(columns), len(columns))
-		tempWriters := []fromResultConvertValueFunc{}
+		tempWriters := []func(){}
 		for i, column := range columns {
 			fieldInfo, isExist := fieldInfoMap[column]
 			if isExist == false {
 				return errors.New(fmt.Sprintf("%v dos not have column %v", structType.String(), column))
 			}
-			if dialect.needFromResultConvert(fieldInfo.fieldType) {
+			if dialect.NeedFromResultConvert(fieldInfo.fieldType) {
 				//需要动态数据转换
-				tempScan, tempWriter := dialect.fromResultConvertValue(temp.FieldByIndex(fieldInfo.index))
+				tempScan, tempWriter := dialect.FromResultConvertValue(temp.FieldByIndex(fieldInfo.index))
 				tempScans[i] = tempScan.Addr().Interface()
 				if tempWriter != nil {
 					tempWriters = append(tempWriters, tempWriter)
@@ -314,14 +315,14 @@ func initSqlSetValue(t reflect.Type) sqlSetValueType {
 	tKind := getTypeKind(t)
 	if tKind != 1 && tKind != 2 {
 		tName := t.String()
-		return func(dialect sqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		return func(dialect SqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			return nil, errors.New(fmt.Sprintf("%v dos not support setValue", tName))
 		}
 	}
-	structSetValue := func(t reflect.Type) func(dialect sqlDialect, v reflect.Value, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+	structSetValue := func(t reflect.Type) func(dialect SqlDialect, v reflect.Value, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 		fields := getStructPublicField(t)
 
-		return func(dialect sqlDialect, v reflect.Value, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		return func(dialect SqlDialect, v reflect.Value, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			hasData := false
 			for _, field := range fields {
 				//自增键和created字段不写入
@@ -333,7 +334,7 @@ func initSqlSetValue(t reflect.Type) sqlSetValueType {
 					builder.WriteByte(',')
 				}
 
-				appendQuotedIdentifier(dialect, field.name, builder)
+				AppendQuotedIdentifier(dialect, field.name, builder)
 				builder.WriteString(" = ? ")
 				if field.isUpdated == true {
 					//updated字段设置为当前时间
@@ -350,13 +351,13 @@ func initSqlSetValue(t reflect.Type) sqlSetValueType {
 
 	if tKind == 1 {
 		structSetValueHandler := structSetValue(t)
-		return func(dialect sqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		return func(dialect SqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			value := reflect.ValueOf(v)
 			return structSetValueHandler(dialect, value, in, builder)
 		}
 	} else {
 		structSetValueHandler := structSetValue(t.Elem())
-		return func(dialect sqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		return func(dialect SqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			value := reflect.ValueOf(v).Elem()
 			return structSetValueHandler(dialect, value, in, builder)
 		}

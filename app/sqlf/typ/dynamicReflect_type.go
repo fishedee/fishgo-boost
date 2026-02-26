@@ -1,4 +1,4 @@
-package sqlf
+package typ
 
 import (
 	gosql "database/sql"
@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	. "github.com/fishedee/fishgo-boost/app/sqlf/dialect"
 )
 
-func dynamicType_fromResult(dialect sqlDialect, v interface{}, rows *gosql.Rows) error {
+func dynamicType_fromResult(dialect SqlDialect, v interface{}, rows *gosql.Rows) error {
 	inValue := reflect.ValueOf(v)
 	inValueType := inValue.Type()
 	if inValueType.Kind() != reflect.Ptr {
@@ -19,7 +21,7 @@ func dynamicType_fromResult(dialect sqlDialect, v interface{}, rows *gosql.Rows)
 	if inValueElemType.Name() != "" || inValueElemType.Kind() != reflect.Slice {
 		//单个转换
 		if rows.Next() {
-			wrapValue, elemValueWriter := dialect.fromResultConvertValue(inValueElem)
+			wrapValue, elemValueWriter := dialect.FromResultConvertValue(inValueElem)
 			err := rows.Scan(wrapValue.Addr().Interface())
 			if err != nil {
 				return err
@@ -34,7 +36,7 @@ func dynamicType_fromResult(dialect sqlDialect, v interface{}, rows *gosql.Rows)
 		inValueElemTypeReal := inValueElemType.Elem()
 		realResult := reflect.MakeSlice(reflect.SliceOf(inValueElemTypeReal), 0, 0)
 		tempValue := reflect.New(inValueElemTypeReal).Elem()
-		wrapValue, tempValueWriter := dialect.fromResultConvertValue(tempValue)
+		wrapValue, tempValueWriter := dialect.FromResultConvertValue(tempValue)
 		for rows.Next() {
 			err := rows.Scan(wrapValue.Addr().Interface())
 			if err != nil {
@@ -48,7 +50,7 @@ func dynamicType_fromResult(dialect sqlDialect, v interface{}, rows *gosql.Rows)
 	}
 }
 
-func dynamicType_toArgsfunc(dialect sqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+func dynamicType_toArgsfunc(dialect SqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 	inValue := reflect.ValueOf(v)
 	inValueType := inValue.Type()
 	if inValueType.Kind() == reflect.Ptr {
@@ -57,7 +59,7 @@ func dynamicType_toArgsfunc(dialect sqlDialect, isInsert bool, v interface{}, in
 	}
 	if inValueType.Name() != "" || inValueType.Kind() != reflect.Slice {
 		//单个转换
-		tempValue := dialect.toArgsConvertValue(inValue)
+		tempValue := dialect.ToArgsConvertValue(inValue)
 		builder.WriteByte('?')
 		in = append(in, tempValue)
 		return in, nil
@@ -66,7 +68,7 @@ func dynamicType_toArgsfunc(dialect sqlDialect, isInsert bool, v interface{}, in
 		len := inValue.Len()
 		builder.WriteString(getSqlComma(len))
 		for i := 0; i != len; i++ {
-			tempValue := dialect.toArgsConvertValue(inValue.Index(i))
+			tempValue := dialect.ToArgsConvertValue(inValue.Index(i))
 			in = append(in, tempValue)
 		}
 		return in, nil

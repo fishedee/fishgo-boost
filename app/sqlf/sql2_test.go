@@ -192,7 +192,8 @@ func testInsertTime(t *testing.T, initDatabase func() SqlfDB) {
 	})
 
 	//测试单个type类型
-	db.MustExec("insert into t_user(name,createTime,modifyTime) values(?,?,?)", "dog", parseTime("2020-08-02 00:00:00"), time.Unix(1, 0))
+	insertResult := db.MustExec("insert into t_user(name,createTime,modifyTime) values(?,?,?)", "dog", parseTime("2020-08-02 00:00:00"), time.Unix(1, 0))
+	AssertEqual(t, insertResult.MustLastInsertId(), int64(10003))
 
 	db.MustQuery(&users, "select * from t_user where userId = 10003", users)
 

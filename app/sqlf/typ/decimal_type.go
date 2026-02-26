@@ -1,29 +1,31 @@
-package sqlf
+package typ
 
 import (
 	gosql "database/sql"
 	"errors"
-	. "github.com/fishedee/fishgo-boost/language"
 	"reflect"
 	"strings"
+
+	. "github.com/fishedee/fishgo-boost/app/sqlf/dialect"
+	. "github.com/fishedee/fishgo-boost/language"
 )
 
 func initDecimalSqlTypeOperation() {
 	a := Decimal("")
 	decimalType := reflect.TypeOf(a)
 	sqlTypeOperation := sqlTypeOperation{
-		toArgs: func(dialect sqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		toArgs: func(dialect SqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			builder.WriteByte('?')
 			in = append(in, v)
 			return in, nil
 		},
-		fromResult: func(dialect sqlDialect, v interface{}, rows *gosql.Rows) error {
+		fromResult: func(dialect SqlDialect, v interface{}, rows *gosql.Rows) error {
 			return errors.New("Decimal dos not support setValue")
 		},
-		column: func(dialect sqlDialect, isInsert bool, builder *strings.Builder) error {
+		column: func(dialect SqlDialect, isInsert bool, builder *strings.Builder) error {
 			return errors.New("Decimal dos not support column")
 		},
-		setValue: func(dialect sqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		setValue: func(dialect SqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			return nil, errors.New("Decimal dos not support setValue")
 		},
 	}
@@ -34,13 +36,13 @@ func initDecimalPtrSqlTypeOperation() {
 	var a *Decimal
 	decimalPtrType := reflect.TypeOf(a)
 	sqlTypeOperation := sqlTypeOperation{
-		toArgs: func(dialect sqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		toArgs: func(dialect SqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			data := v.(*Decimal)
 			builder.WriteByte('?')
 			in = append(in, *data)
 			return in, nil
 		},
-		fromResult: func(dialect sqlDialect, v interface{}, rows *gosql.Rows) error {
+		fromResult: func(dialect SqlDialect, v interface{}, rows *gosql.Rows) error {
 			if rows.Next() {
 				err := rows.Scan(v)
 				if err != nil {
@@ -51,10 +53,10 @@ func initDecimalPtrSqlTypeOperation() {
 				return errors.New("has no result")
 			}
 		},
-		column: func(dialect sqlDialect, isInsert bool, builder *strings.Builder) error {
+		column: func(dialect SqlDialect, isInsert bool, builder *strings.Builder) error {
 			return errors.New("*Decimal dos not support column")
 		},
-		setValue: func(dialect sqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		setValue: func(dialect SqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			return nil, errors.New("*Decimal dos not support setValue")
 		},
 	}
@@ -65,7 +67,7 @@ func initDecimalSliceSqlTypeOperation() {
 	a := []Decimal{}
 	decimalSliceType := reflect.TypeOf(a)
 	sqlTypeOperation := sqlTypeOperation{
-		toArgs: func(dialect sqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		toArgs: func(dialect SqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			data := v.([]Decimal)
 			builder.WriteString(getSqlComma(len(data)))
 			for _, single := range data {
@@ -73,13 +75,13 @@ func initDecimalSliceSqlTypeOperation() {
 			}
 			return in, nil
 		},
-		fromResult: func(dialect sqlDialect, v interface{}, rows *gosql.Rows) error {
+		fromResult: func(dialect SqlDialect, v interface{}, rows *gosql.Rows) error {
 			return errors.New("[]Decimal dos not support setValue")
 		},
-		column: func(dialect sqlDialect, isInsert bool, builder *strings.Builder) error {
+		column: func(dialect SqlDialect, isInsert bool, builder *strings.Builder) error {
 			return errors.New("[]Decimal dos not support column")
 		},
-		setValue: func(dialect sqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		setValue: func(dialect SqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			return nil, errors.New("[]Decimal dos not support setValue")
 		},
 	}
@@ -90,7 +92,7 @@ func initDecimalSlicePtrSqlTypeOperation() {
 	var a *[]Decimal
 	stringSlicePtrType := reflect.TypeOf(a)
 	sqlTypeOperation := sqlTypeOperation{
-		toArgs: func(dialect sqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		toArgs: func(dialect SqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			data := *(v.(*[]Decimal))
 			builder.WriteString(getSqlComma(len(data)))
 			for _, single := range data {
@@ -98,7 +100,7 @@ func initDecimalSlicePtrSqlTypeOperation() {
 			}
 			return in, nil
 		},
-		fromResult: func(dialect sqlDialect, v interface{}, rows *gosql.Rows) error {
+		fromResult: func(dialect SqlDialect, v interface{}, rows *gosql.Rows) error {
 			data := v.(*[]Decimal)
 			result := []Decimal{}
 			var temp Decimal
@@ -112,10 +114,10 @@ func initDecimalSlicePtrSqlTypeOperation() {
 			*data = result
 			return nil
 		},
-		column: func(dialect sqlDialect, isInsert bool, builder *strings.Builder) error {
+		column: func(dialect SqlDialect, isInsert bool, builder *strings.Builder) error {
 			return errors.New("*[]Decimal dos not support column")
 		},
-		setValue: func(dialect sqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
+		setValue: func(dialect SqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error) {
 			return nil, errors.New("*[]Decimal dos not support setValue")
 		},
 	}
