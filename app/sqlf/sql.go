@@ -2,12 +2,12 @@ package sqlf
 
 import (
 	gosql "database/sql"
-	"strings"
 	"time"
 
 	. "github.com/fishedee/fishgo-boost/app/log"
 	. "github.com/fishedee/fishgo-boost/app/metric"
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	_ "modernc.org/sqlite"
 )
 
@@ -16,6 +16,7 @@ type ENGINE int
 const (
 	MYSQL ENGINE = 1 + iota
 	SQLITE
+	POSTGRES
 	UNKNOWN
 )
 
@@ -34,6 +35,7 @@ type SqlfCommon interface {
 	Exec(query string, args ...interface{}) (SqlfResult, error)
 	MustExec(query string, args ...interface{}) SqlfResult
 
+	Limit(index int, size int) string
 	Engine() ENGINE
 }
 
@@ -115,7 +117,7 @@ func NewSqlfDB(log Log, metric Metric, config SqlfDBConfig) (SqlfDB, error) {
 		db:      db,
 		log:     log,
 		isDebug: isDebug,
-		driver:  config.Driver,
+		dialect: getSqlDialect(config.Driver),
 	}, nil
 }
 
@@ -149,22 +151,20 @@ type dbImplement struct {
 	db      *gosql.DB
 	log     Log
 	isDebug bool
-	driver  string
+	dialect sqlDialect
 }
 
 func (this *dbImplement) Engine() ENGINE {
-	if strings.Contains(this.driver, "mysql") {
-		return MYSQL
-	} else if strings.Contains(this.driver, "sqlite") {
-		return SQLITE
-	} else {
-		return UNKNOWN
-	}
+	return this.dialect.engine()
+}
+
+func (this *dbImplement) Limit(index int, size int) string {
+	return this.dialect.limit(index, size)
 }
 
 func (this *dbImplement) Query(data interface{}, query string, args ...interface{}) error {
 	sqlRunner := func() (string, error) {
-		sql, args, err := genSql(this.driver, query, args)
+		sql, args, err := genSql(this.dialect, query, args)
 		if err != nil {
 			return query, err
 		}
@@ -173,7 +173,7 @@ func (this *dbImplement) Query(data interface{}, query string, args ...interface
 			return sql, err
 		}
 		defer rows.Close()
-		err = extractResult(this.driver, data, rows)
+		err = extractResult(this.dialect, data, rows)
 		if err != nil {
 			return sql, err
 		}
@@ -193,7 +193,7 @@ func (this *dbImplement) MustQuery(data interface{}, query string, args ...inter
 func (this *dbImplement) Exec(query string, args ...interface{}) (SqlfResult, error) {
 	var execResult SqlfResult
 	sqlRunner := func() (string, error) {
-		sql, args, err := genSql(this.driver, query, args)
+		sql, args, err := genSql(this.dialect, query, args)
 		if err != nil {
 			return query, err
 		}
@@ -229,7 +229,7 @@ func (this *dbImplement) Begin() (SqlfTx, error) {
 		tx:          tx,
 		isDebug:     this.isDebug,
 		log:         this.log,
-		driver:      this.driver,
+		dialect:     this.dialect,
 		hasCommit:   false,
 		hasRollback: false,
 	}, nil
@@ -285,25 +285,23 @@ func (this *resultImplement) MustRowsAffected() int64 {
 type txImplement struct {
 	tx          *gosql.Tx
 	log         Log
-	driver      string
+	dialect     sqlDialect
 	isDebug     bool
 	hasCommit   bool
 	hasRollback bool
 }
 
 func (this *txImplement) Engine() ENGINE {
-	if strings.Contains(this.driver, "mysql") {
-		return MYSQL
-	} else if strings.Contains(this.driver, "sqlite") {
-		return SQLITE
-	} else {
-		return UNKNOWN
-	}
+	return this.dialect.engine()
+}
+
+func (this *txImplement) Limit(index int, size int) string {
+	return this.dialect.limit(index, size)
 }
 
 func (this *txImplement) Query(data interface{}, query string, args ...interface{}) error {
 	sqlRunner := func() (string, error) {
-		sql, args, err := genSql(this.driver, query, args)
+		sql, args, err := genSql(this.dialect, query, args)
 		if err != nil {
 			return query, err
 		}
@@ -312,7 +310,7 @@ func (this *txImplement) Query(data interface{}, query string, args ...interface
 			return sql, err
 		}
 		defer rows.Close()
-		err = extractResult(this.driver, data, rows)
+		err = extractResult(this.dialect, data, rows)
 		if err != nil {
 			return sql, err
 		}
@@ -332,7 +330,7 @@ func (this *txImplement) MustQuery(data interface{}, query string, args ...inter
 func (this *txImplement) Exec(query string, args ...interface{}) (SqlfResult, error) {
 	var execResult SqlfResult
 	sqlRunner := func() (string, error) {
-		sql, args, err := genSql(this.driver, query, args)
+		sql, args, err := genSql(this.dialect, query, args)
 		if err != nil {
 			return query, err
 		}

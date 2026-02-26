@@ -63,6 +63,45 @@ func initMySqlDatabase2() SqlfDB {
 	return db
 }
 
+func initPostgresqlDatabase2() SqlfDB {
+	log, err := NewLog(LogConfig{
+		Driver: "console",
+	})
+	if err != nil {
+		panic(err)
+	}
+	db, err := NewSqlfDB(log, nil, SqlfDBConfig{
+		Driver:     "postgres_fix",
+		SourceName: "user=postgres password=postgres host=127.0.0.1 port=5432 dbname=test sslmode=disable timezone=Asia/Shanghai",
+		Debug:      true,
+	})
+	if err != nil {
+		panic(err)
+	}
+	db.MustExec(`
+	drop table if exists t_user;
+	`)
+	db.MustExec(`
+	create table t_user(
+		userId integer not null GENERATED ALWAYS AS IDENTITY (start with 10001),
+		name varchar(32) not null,
+		createTime timestamptz not null default '1970-01-01 08:00:00',
+		modifyTime timestamptz not null default '1970-01-01 08:00:00',
+		primary key(userId)
+	);`)
+	/* 等效上述代码
+	db.MustExec(`
+	CREATE SEQUENCE t_user_userid_seq;
+	create table t_user(
+		userId integer not null DEFAULT nextval('t_user_userid_seq'),
+		name varchar(32) not null,
+		createTime timestamp not null default '1970-01-01 08:00:00',
+		modifyTime timestamp not null default '1970-01-01 08:00:00'
+	);`)
+	*/
+	return db
+}
+
 type User2 struct {
 	UserId     int `sqlf:"autoincr"`
 	Name       string
@@ -95,10 +134,15 @@ func testInsertTime(t *testing.T, initDatabase func() SqlfDB) {
 		insert into t_user(userId, name , createTime ,modifyTime )values
 		(10001,'fish',datetime('2020-07-01 00:00:00+08:00'),datetime('2020-07-02 18:00:00+08:00'))
 	`)
-	} else {
+	} else if db.Engine() == MYSQL {
 		db.MustExec(`
 		insert into t_user(userId, name , createTime ,modifyTime )values
 		(10001,'fish','2020-07-01 00:00:00','2020-07-02 18:00:00')
+	`)
+	} else {
+		db.MustExec(`
+		insert into t_user( name , createTime ,modifyTime )values
+		('fish','2020-07-01 00:00:00','2020-07-02 18:00:00')
 	`)
 	}
 
@@ -148,7 +192,7 @@ func testInsertTime(t *testing.T, initDatabase func() SqlfDB) {
 	})
 
 	//测试单个type类型
-	db.MustExec("insert into t_user(userId,name,createTime,modifyTime) values(?,?,?,?)", 10003, "dog", parseTime("2020-08-02 00:00:00"), time.Unix(1, 0))
+	db.MustExec("insert into t_user(name,createTime,modifyTime) values(?,?,?)", "dog", parseTime("2020-08-02 00:00:00"), time.Unix(1, 0))
 
 	db.MustQuery(&users, "select * from t_user where userId = 10003", users)
 
@@ -165,4 +209,5 @@ func testAll2(t *testing.T, initDatabase func() SqlfDB) {
 func TestAll2(t *testing.T) {
 	testAll2(t, initSqliteDatabase2)
 	testAll2(t, initMySqlDatabase2)
+	testAll2(t, initPostgresqlDatabase2)
 }

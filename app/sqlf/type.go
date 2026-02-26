@@ -17,13 +17,13 @@ const (
 	UpdateColumnValue = "?.updateColumnValue"
 )
 
-type sqlToArgsType = func(driver string, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error)
+type sqlToArgsType = func(dialect sqlDialect, isInsert bool, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error)
 
-type sqlFromResultType = func(driver string, v interface{}, rows *gosql.Rows) error
+type sqlFromResultType = func(dialect sqlDialect, v interface{}, rows *gosql.Rows) error
 
-type sqlColumnType = func(driver string, isInsert bool, builder *strings.Builder) error
+type sqlColumnType = func(dialect sqlDialect, isInsert bool, builder *strings.Builder) error
 
-type sqlSetValueType = func(driver string, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error)
+type sqlSetValueType = func(dialect sqlDialect, v interface{}, in []interface{}, builder *strings.Builder) ([]interface{}, error)
 
 type sqlTypeOperation struct {
 	toArgs     sqlToArgsType
@@ -38,9 +38,33 @@ var (
 	stringPtrType       = reflect.TypeOf((*string)(nil))
 )
 
-func extractResult(driver string, data interface{}, rows *gosql.Rows) error {
-	operation := getSqlOperationFromInterface(data)
-	return operation.fromResult(driver, data, rows)
+func elemType(t reflect.Type) reflect.Type {
+	if t.Name() != "" {
+		//该类型已经别名了，例如是json.RawMessage
+		return t
+	}
+	tKind := t.Kind()
+	if tKind == reflect.Ptr {
+		return elemType(t.Elem())
+	} else if tKind == reflect.Array ||
+		tKind == reflect.Slice {
+		return t.Elem()
+	} else {
+		return t
+	}
+}
+func extractResult(dialect sqlDialect, data interface{}, rows *gosql.Rows) error {
+	dataType := reflect.TypeOf(data)
+	dataElemType := elemType(dataType)
+	isNeedDynamicConvert := dialect.needFromResultConvert(dataElemType)
+	if isNeedDynamicConvert == true {
+		//需要动态数据转换
+		return dynamicType_fromResult(dialect, data, rows)
+	} else {
+		//直接转换
+		operation := getSqlOperation(dataType)
+		return operation.fromResult(dialect, data, rows)
+	}
 }
 
 func notWordChar(data uint8) bool {
@@ -70,7 +94,7 @@ func checkStartWith(query string, match string) bool {
 	}
 }
 
-func genSql(driver string, query string, args []interface{}) (string, []interface{}, error) {
+func genSql(dialect sqlDialect, query string, args []interface{}) (string, []interface{}, error) {
 	//获得operation
 	operation := make([]sqlTypeOperation, len(args), len(args))
 	for i, arg := range args {
@@ -97,35 +121,35 @@ func genSql(driver string, query string, args []interface{}) (string, []interfac
 		if checkStartWith(query, InsertColumn) {
 			//提取insert的column
 			query = query[len(InsertColumn):]
-			err = operation[argsIndex].column(driver, true, &sqlBuilder)
+			err = operation[argsIndex].column(dialect, true, &sqlBuilder)
 			if err != nil {
 				return "", nil, err
 			}
 		} else if checkStartWith(query, NormalColumn) {
 			//提取normal的column
 			query = query[len(NormalColumn):]
-			err = operation[argsIndex].column(driver, false, &sqlBuilder)
+			err = operation[argsIndex].column(dialect, false, &sqlBuilder)
 			if err != nil {
 				return "", nil, err
 			}
 		} else if checkStartWith(query, UpdateColumnValue) {
 			//提取update的column与value
 			query = query[len(UpdateColumnValue):]
-			realArgs, err = operation[argsIndex].setValue(driver, args[argsIndex], realArgs, &sqlBuilder)
+			realArgs, err = operation[argsIndex].setValue(dialect, args[argsIndex], realArgs, &sqlBuilder)
 			if err != nil {
 				return "", nil, err
 			}
 		} else if checkStartWith(query, InsertValue) {
 			//提取insert的value
 			query = query[len(InsertValue):]
-			realArgs, err = operation[argsIndex].toArgs(driver, true, args[argsIndex], realArgs, &sqlBuilder)
+			realArgs, err = operation[argsIndex].toArgs(dialect, true, args[argsIndex], realArgs, &sqlBuilder)
 			if err != nil {
 				return "", nil, err
 			}
 		} else {
 			//普通的提取方式
 			query = query[1:]
-			realArgs, err = operation[argsIndex].toArgs(driver, false, args[argsIndex], realArgs, &sqlBuilder)
+			realArgs, err = operation[argsIndex].toArgs(dialect, false, args[argsIndex], realArgs, &sqlBuilder)
 			if err != nil {
 				return "", nil, err
 			}

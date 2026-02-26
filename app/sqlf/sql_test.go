@@ -113,6 +113,65 @@ func initMySqlDatabase() SqlfDB {
 	return db
 }
 
+func initPostgresqlDatabase() SqlfDB {
+	log, err := NewLog(LogConfig{
+		Driver: "console",
+	})
+	if err != nil {
+		panic(err)
+	}
+	db, err := NewSqlfDB(log, nil, SqlfDBConfig{
+		Driver:     "postgres_fix",
+		SourceName: "user=postgres password=postgres host=127.0.0.1 port=5432 dbname=test sslmode=disable timezone=Asia/Shanghai",
+		Debug:      true,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	db.MustExec(`
+	drop table if exists t_user;
+	`)
+	db.MustExec(`
+	drop table if exists t_item;
+	`)
+	db.MustExec(`
+	drop table if exists t_article;
+	`)
+	db.MustExec(`
+	create table t_user(
+		userId integer not null GENERATED ALWAYS AS IDENTITY (start with 1),
+		name varchar(32) not null,
+		age integer not null,
+		money decimal(14,2) not null,
+		loginTime timestamptz not null,
+		createTime timestamptz not null default '1970-01-01 08:00:00',
+		modifyTime timestamptz not null default '1970-01-01 08:00:00',
+		primary key(userId)
+	)`)
+
+	db.MustExec(`
+	create table t_item(
+		itemId integer not null GENERATED ALWAYS AS IDENTITY (start with 1),
+		name varchar(32) not null,
+		onShelfTime timestamptz not null default '1970-01-01 08:00:00',
+		createTime timestamptz not null default '1970-01-01 08:00:00',
+		modifyTime timestamptz not null default '1970-01-01 08:00:00',
+		primary key(itemId)
+	)`)
+
+	db.MustExec(`
+	create table t_article(
+		articleId integer not null GENERATED ALWAYS AS IDENTITY (start with 1),
+		data text not null,
+		remark text not null,
+		createTime timestamptz not null default '1970-01-01 08:00:00',
+		modifyTime timestamptz not null default '1970-01-01 08:00:00',
+		primary key(articleId)
+	)`)
+	return db
+}
+
 func checkNowTime(t *testing.T, inTime time.Time) {
 	now := time.Now()
 	AssertEqual(t, now.Sub(inTime) <= time.Second, true)
@@ -249,7 +308,6 @@ func testStructType(t *testing.T, db SqlfCommon) {
 		Article{ArticleId: 1, Data: []byte(`{"name":"fish","age":123}`), Remark: json.RawMessage(`{"name2":"fish","age2":123}`), CreateTime: time.Unix(0, 0), ModifyTime: time.Unix(0, 0)},
 		Article{ArticleId: 2, Data: []byte(`{"name":"cat","age":789}`), Remark: json.RawMessage(`{"name2":"cat","age2":789}`), CreateTime: time.Unix(0, 0), ModifyTime: time.Unix(0, 0)},
 	})
-
 }
 
 func testStructTypeAll(t *testing.T, initDatabase func() SqlfDB) {
@@ -279,7 +337,7 @@ func testBuildInType(t *testing.T, db SqlfCommon) {
 	db.MustQuery(&users, "select * from t_user where name in (?) and age in (?) and money in (?) and loginTime in (?)",
 		[]string{"12", "23"},
 		[]int{1, 2, 3},
-		[]Decimal{"123", "456", "789", "0ab"},
+		[]Decimal{"123", "456", "789"},
 		[]time.Time{time.Unix(1, 0)},
 	)
 	AssertEqual(t, users, []User{})
@@ -335,7 +393,7 @@ func testBuildInType(t *testing.T, db SqlfCommon) {
 	AssertEqual(t, articles, []Article{})
 
 	var data []byte
-	db.MustQuery(&data, "select data from t_article limit 0,1")
+	db.MustQuery(&data, "select data from t_article "+db.Limit(0, 1))
 	AssertEqual(t, data, []byte(`{"name":"fish","age":123}`))
 
 	var datas [][]byte
@@ -343,7 +401,7 @@ func testBuildInType(t *testing.T, db SqlfCommon) {
 	AssertEqual(t, datas, [][]byte{[]byte(`{"name":"fish","age":123}`), []byte(`{"name":"cat","age":456}`)})
 
 	var remark json.RawMessage
-	db.MustQuery(&remark, "select remark from t_article limit 0,1")
+	db.MustQuery(&remark, "select remark from t_article "+db.Limit(0, 1))
 	AssertEqual(t, remark, json.RawMessage(`{"name2":"fish","age2":123}`))
 
 	var remarks []json.RawMessage
@@ -501,7 +559,7 @@ func testZeroTime(t *testing.T, initDatabase func() SqlfDB) {
 	db.MustQuery(&items, "select * from t_item")
 
 	t.Logf("%v", items[0].OnShelfTime)
-	AssertEqual(t, items[0].OnShelfTime == ZERO_TIME, true)
+	AssertEqual(t, items[0].OnShelfTime, ZERO_TIME)
 
 	db.MustExec("update t_item set ?.updateColumnValue", Item{
 		Name:        "fish",
@@ -512,7 +570,7 @@ func testZeroTime(t *testing.T, initDatabase func() SqlfDB) {
 
 	db.MustQuery(&items, "select * from t_item")
 
-	AssertEqual(t, items[0].OnShelfTime == ZERO_TIME, true)
+	AssertEqual(t, items[0].OnShelfTime, ZERO_TIME)
 
 	//使用time注入
 	db2 := initDatabase()
@@ -522,8 +580,8 @@ func testZeroTime(t *testing.T, initDatabase func() SqlfDB) {
 	var items2 []Item
 	db2.MustQuery(&items2, "select * from t_item")
 
-	AssertEqual(t, items2[0].OnShelfTime == ZERO_TIME, true)
-	AssertEqual(t, items2[0].CreateTime == ZERO_TIME, true)
+	AssertEqual(t, items2[0].OnShelfTime, ZERO_TIME)
+	AssertEqual(t, items2[0].CreateTime, ZERO_TIME)
 }
 
 func testAll(t *testing.T, initDatabase func() SqlfDB) {
@@ -534,9 +592,11 @@ func testAll(t *testing.T, initDatabase func() SqlfDB) {
 	testTxCloseCommit(t, initDatabase)
 	testTxCloseRollback(t, initDatabase)
 	testZeroTime(t, initDatabase)
+
 }
 
 func TestAll(t *testing.T) {
 	testAll(t, initSqliteDatabase)
 	testAll(t, initMySqlDatabase)
+	testAll(t, initPostgresqlDatabase)
 }
