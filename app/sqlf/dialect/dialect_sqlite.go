@@ -24,10 +24,21 @@ func (d sqliteDialect) Limit(index int, size int) string {
 }
 
 func (d sqliteDialect) NeedFromResultConvert(inValueType reflect.Type) bool {
+	if inValueType == timeType {
+		return true
+	}
 	return false
 }
 
 func (d sqliteDialect) FromResultConvertValue(inValue reflect.Value) (reflect.Value, fromResultConvertValueFunc) {
+	if inValue.Type() == timeType {
+		result := time.Time{}
+		resultValue := reflect.ValueOf(&result).Elem()
+		resultValueWritter := func() {
+			inValue.Set(reflect.ValueOf(result.Local()))
+		}
+		return resultValue, resultValueWritter
+	}
 	err := fmt.Sprintf("sqlite do not need to fromResultConvertValue:%s", inValue.Type())
 	panic(err)
 }

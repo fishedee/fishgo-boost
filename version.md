@@ -1,3 +1,7 @@
+## v1.6.1
+
+* 修复sqlf的to_args转换的时候，漏了update语句的问题
+
 ## v1.6.0
 
 * 新增postgresql_fix驱动，让sqlf支持postgresql，同时删除sqlite_fix驱动

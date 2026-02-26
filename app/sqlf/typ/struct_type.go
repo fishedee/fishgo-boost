@@ -340,7 +340,14 @@ func initSqlSetValue(t reflect.Type) sqlSetValueType {
 					//updated字段设置为当前时间
 					in = append(in, time.Now())
 				} else {
-					in = append(in, v.FieldByIndex(field.index).Interface())
+					if dialect.NeedToArgsConvert(field.fieldType) {
+						//动态数据转换后插入
+						argvValue := v.FieldByIndex(field.index)
+						in = append(in, dialect.ToArgsConvertValue(argvValue))
+					} else {
+						//直接插入
+						in = append(in, v.FieldByIndex(field.index).Interface())
+					}
 				}
 				hasData = true
 

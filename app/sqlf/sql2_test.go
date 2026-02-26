@@ -191,6 +191,27 @@ func testInsertTime(t *testing.T, initDatabase func() SqlfDB) {
 		user2,
 	})
 
+	//测试多个time类型的搜索
+	db.MustQuery(&users, "select * from t_user where createTime = ?", parseTime("2020-08-01 00:00:00"))
+	AssertEqual(t, users, []User2{
+		user2,
+	})
+
+	db.MustQuery(&users, "select * from t_user where createTime in (?)", []time.Time{parseTime("2020-07-01 00:00:00"), parseTime("2020-08-01 00:00:00")})
+	AssertEqual(t, users, []User2{
+		user1,
+		user2,
+	})
+
+	//用API修改数据
+	user2.CreateTime = parseTime("2020-09-01 00:00:00")
+	db.MustExec("update t_user set ?.updateColumnValue where userId = ?", user2, user2.UserId)
+
+	db.MustQuery(&users, "select * from t_user where createTime = ?", parseTime("2020-09-01 00:00:00"))
+	AssertEqual(t, users, []User2{
+		user2,
+	})
+
 	//测试单个type类型
 	insertResult := db.MustExec("insert into t_user(name,createTime,modifyTime) values(?,?,?)", "dog", parseTime("2020-08-02 00:00:00"), time.Unix(1, 0))
 	AssertEqual(t, insertResult.MustLastInsertId(), int64(10003))
