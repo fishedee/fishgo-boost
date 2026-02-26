@@ -16,7 +16,7 @@ func initSqliteDatabase2() SqlfDB {
 		panic(err)
 	}
 	db, err := NewSqlfDB(log, nil, SqlfDBConfig{
-		Driver:     "sqlite_fix",
+		Driver:     "sqlite",
 		SourceName: ":memory:?_inttotime=1",
 		Debug:      true,
 	})

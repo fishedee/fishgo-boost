@@ -65,7 +65,7 @@ cd cmd/querygen && go build  # Builds the query code generator
 - **ioc**: Reflection-based dependency injection container. Services are registered as factory functions; the container resolves the dependency graph automatically using DFS.
 - **config**: INI-based configuration with run-mode support (`dev`, `production`). Struct binding via `config:"key"` tags.
 - **database**: Database abstraction wrapping xorm/beego, supporting MySQL and SQLite.
-- **sqlf**: SQL builder with struct mapping for INSERT/UPDATE/SELECT. Uses raw `query + args` style. Handles `auto_increment`, `createTime`, `modifyTime` fields specially. Includes a `sqlite_fix` driver that resolves SQLite timestamp search/insert issues.
+- **sqlf**: SQL builder with struct mapping for INSERT/UPDATE/SELECT. Uses raw `query + args` style. Handles `auto_increment`, `createTime`, `modifyTime` fields specially. 
 - **router**: High-performance HTTP router using a Trie tree, supporting path parameters and method routing.
 - **workgroup**: Manages lifecycle of multiple services with graceful shutdown.
 - **middleware**: HTTP middleware (CORS, logging, gzip, profiling).
@@ -100,7 +100,3 @@ ioc.MustInvoke(func(svc *MyService) {
     svc.Run()
 })
 ```
-
-### SQLite Notes
-
-Use the `sqlite_fix` driver (not the standard `sqlite` driver) when working with SQLite. It fixes timestamp field search and insert issues caused by timezone handling in the standard driver.

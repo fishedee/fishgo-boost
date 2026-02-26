@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 )
 
 type fromResultConvertValueFunc = func()
@@ -18,6 +19,11 @@ type sqlDialect interface {
 	needToArgsConvert(inValueType reflect.Type) bool
 	toArgsConvertValue(inValue reflect.Value) interface{}
 }
+
+var (
+	jsonRawMessageType = reflect.TypeOf(json.RawMessage{})
+	timeType           = reflect.TypeOf(time.Time{})
+)
 
 type mysqlDialect struct{}
 
@@ -79,10 +85,17 @@ func (d sqliteDialect) fromResultConvertValue(inValue reflect.Value) (reflect.Va
 }
 
 func (d sqliteDialect) needToArgsConvert(inValueType reflect.Type) bool {
+	if inValueType == timeType {
+		return true
+	}
 	return false
 }
 
 func (d sqliteDialect) toArgsConvertValue(inValue reflect.Value) interface{} {
+	if inValue.Type() == timeType {
+		t := inValue.Interface().(time.Time)
+		return t.UTC().Format("2006-01-02 15:04:05")
+	}
 	err := fmt.Sprintf("sqlite do not need to toArgsConvertValue:%s", inValue.Type())
 	panic(err)
 }
@@ -103,10 +116,6 @@ func (d postgresDialect) quoteIdentifier(name string, builder *strings.Builder) 
 func (d postgresDialect) limit(index int, size int) string {
 	return fmt.Sprintf("limit %d offset %d", size, index)
 }
-
-var (
-	jsonRawMessageType = reflect.TypeOf(json.RawMessage{})
-)
 
 func (d postgresDialect) needFromResultConvert(inValueType reflect.Type) bool {
 	if inValueType == jsonRawMessageType {

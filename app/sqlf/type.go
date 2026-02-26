@@ -53,6 +53,7 @@ func elemType(t reflect.Type) reflect.Type {
 		return t
 	}
 }
+
 func extractResult(dialect sqlDialect, data interface{}, rows *gosql.Rows) error {
 	dataType := reflect.TypeOf(data)
 	dataElemType := elemType(dataType)
@@ -64,6 +65,19 @@ func extractResult(dialect sqlDialect, data interface{}, rows *gosql.Rows) error
 		//直接转换
 		operation := getSqlOperation(dataType)
 		return operation.fromResult(dialect, data, rows)
+	}
+}
+
+func convertToArgs(dialect sqlDialect, data interface{}, operation sqlTypeOperation) sqlToArgsType {
+	dataType := reflect.TypeOf(data)
+	dataElemType := elemType(dataType)
+	isNeedDynamicConvert := dialect.needToArgsConvert(dataElemType)
+	if isNeedDynamicConvert == true {
+		//需要动态数据转换
+		return dynamicType_toArgsfunc
+	} else {
+		//直接转换
+		return operation.toArgs
 	}
 }
 
@@ -97,8 +111,10 @@ func checkStartWith(query string, match string) bool {
 func genSql(dialect sqlDialect, query string, args []interface{}) (string, []interface{}, error) {
 	//获得operation
 	operation := make([]sqlTypeOperation, len(args), len(args))
+	operationToArgs := make([]sqlToArgsType, len(args), len(args))
 	for i, arg := range args {
 		operation[i] = getSqlOperationFromInterface(arg)
+		operationToArgs[i] = convertToArgs(dialect, arg, operation[i])
 	}
 
 	//拼凑sql
@@ -142,14 +158,14 @@ func genSql(dialect sqlDialect, query string, args []interface{}) (string, []int
 		} else if checkStartWith(query, InsertValue) {
 			//提取insert的value
 			query = query[len(InsertValue):]
-			realArgs, err = operation[argsIndex].toArgs(dialect, true, args[argsIndex], realArgs, &sqlBuilder)
+			realArgs, err = operationToArgs[argsIndex](dialect, true, args[argsIndex], realArgs, &sqlBuilder)
 			if err != nil {
 				return "", nil, err
 			}
 		} else {
 			//普通的提取方式
 			query = query[1:]
-			realArgs, err = operation[argsIndex].toArgs(dialect, false, args[argsIndex], realArgs, &sqlBuilder)
+			realArgs, err = operationToArgs[argsIndex](dialect, false, args[argsIndex], realArgs, &sqlBuilder)
 			if err != nil {
 				return "", nil, err
 			}

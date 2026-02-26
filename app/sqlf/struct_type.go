@@ -131,7 +131,15 @@ func initSqlToArgs(t reflect.Type) sqlToArgsType {
 				if field.isCreated || field.isUpdated {
 					in = append(in, time.Now())
 				} else {
-					in = append(in, v.FieldByIndex(field.index).Interface())
+					if dialect.needToArgsConvert(field.fieldType) {
+						//动态数据转换后插入
+						argvValue := v.FieldByIndex(field.index)
+						in = append(in, dialect.toArgsConvertValue(argvValue))
+					} else {
+						//直接插入
+						in = append(in, v.FieldByIndex(field.index).Interface())
+					}
+
 				}
 				fieldCount++
 			}
