@@ -1,3 +1,7 @@
+## v1.6.0
+
+* 新增postgresql_fix驱动，让sqlf支持postgresql，同时删除sqlite_fix驱动
+
 ## v1.5.0
 
 * 新增sqlite_fix驱动，解决sqlite的timestamp字段难以搜索和插入的问题
