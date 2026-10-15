@@ -406,6 +406,29 @@ func (this *Parser) extractTypeFromExpr(pass *analysis.Pass, expr ast.Expr, curr
 	var typeInfo TypeInfo
 
 	switch t := expr.(type) {
+	case *ast.StructType:
+		fields := []string{}
+		for _, field := range t.Fields.List {
+			fieldType := this.extractTypeFromExpr(pass, field.Type, currentPkg, imports, depImports)
+			code := fieldType.Code
+			if len(field.Names) > 0 {
+				names := make([]string, len(field.Names))
+				for i, name := range field.Names {
+					names[i] = name.Name
+				}
+				code = strings.Join(names, ", ") + " " + code
+			}
+			if field.Tag != nil {
+				code += " " + field.Tag.Value
+			}
+			fields = append(fields, code)
+		}
+		typeInfo = TypeInfo{
+			Code:       "struct {\n" + strings.Join(fields, "\n") + "\n}",
+			Package:    currentPkg,
+			DepImports: this.flatDepImports(depImports),
+		}
+
 	case *ast.Ident:
 		// 标识符类型
 		typeInfo.Code = t.Name
@@ -527,7 +550,7 @@ func (this *Parser) extractTypeFromExpr(pass *analysis.Pass, expr ast.Expr, curr
 			code.WriteString(this.extractFieldListTypeCode(pass, fieldList, currentPkg, imports, depImports))
 		}
 		typeInfo = TypeInfo{
-			Code:        fmt.Sprintf("interface{%s}\n", code),
+			Code:        fmt.Sprintf("interface{%s}\n", code.String()),
 			Package:     currentPkg,
 			IsInterface: true,
 			ElemType:    nil,
@@ -537,7 +560,7 @@ func (this *Parser) extractTypeFromExpr(pass *analysis.Pass, expr ast.Expr, curr
 		//chan类型
 		elemType := this.extractTypeFromExpr(pass, t.Value, currentPkg, imports, depImports)
 		typeInfo = TypeInfo{
-			Code:       fmt.Sprintf("chan ", elemType.Code),
+			Code:       fmt.Sprintf("chan %s", elemType.Code),
 			Package:    currentPkg,
 			IsChan:     true,
 			ElemType:   &elemType,
